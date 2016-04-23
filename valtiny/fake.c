@@ -47,7 +47,7 @@ void wait_rcu_gp(call_rcu_func_t crf)
  *	handler.  You cannot acquire either cpu_lock or irq_lock while
  *	holding nmi_lock.
  * These locks are also initialized dynamically, something that is
- * required if we want them to be validated by Nidhugg.
+ *  required if we want them to be validated by Nidhugg.
  */
 
 pthread_mutex_t cpu_lock = PTHREAD_MUTEX_INITIALIZER;
@@ -124,9 +124,7 @@ void *thread_update(void *arg)
 	fake_acquire_cpu();
 
 	x = 1;
-#ifndef FORCE_FAILURE_2
 	synchronize_rcu();
-#endif
 	y = 1;
 
 	fake_release_cpu();
