@@ -137,7 +137,7 @@ enum {
 
 #define smp_mb() __sync_synchronize()
 int noassert;
-#ifdef CBMC_ORDERING_BUG
+#ifdef ORDERING_BUG
 #define SET_NOASSERT() do { noassert = 1; } while (0)
 #define CK_NOASSERT() noassert
 #define WARN_ON(condition) assert(noassert || !(condition))

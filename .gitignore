@@ -1,2 +1,7 @@
 *~
 *.o
+*.s
+*.ll
+*.bak
+*.txt
+litmus
