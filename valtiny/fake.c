@@ -46,8 +46,6 @@ void wait_rcu_gp(call_rcu_func_t crf)
  * An nmi_lock indicates that the corresponding thread is in an NMI
  *	handler.  You cannot acquire either cpu_lock or irq_lock while
  *	holding nmi_lock.
- * These locks are also initialized dynamically, something that is
- *      required if we want them to be validated by Nidhugg.
  */
 
 pthread_mutex_t cpu_lock = PTHREAD_MUTEX_INITIALIZER;
@@ -102,7 +100,6 @@ void local_irq_restore(unsigned long flags)
 int x;
 int y;
 
-int __unbuffered_cnt;
 int __unbuffered_tpr_x;
 int __unbuffered_tpr_y;
 
@@ -145,12 +142,6 @@ int main(int argc, char *argv[])
 {
 	pthread_t tu;
 	pthread_t tpr;
-
-	/* Mutexes need to be initialized dynamically, in order for
-	 * Nidhugg to correctly validate the program */
-	pthread_mutex_init(&cpu_lock, NULL);
-	pthread_mutex_init(&irq_lock, NULL);
-	pthread_mutex_init(&nmi_lock, NULL);
 
 	rcu_idle_enter();
 	if (pthread_create(&tu, NULL, thread_update, NULL))

@@ -57,11 +57,7 @@
 
 /* Optimization barrier */
 /* The "volatile" is due to gcc bugs */
-/* Originally (in kernel) it is: ("": : :"memory") -- compiler barrier only.
- * Here "mfence" forces both a compiler and a CPU barrier. In effect, 
- * even with no barrier at all, the program still validates in Nidhugg.
- */
-#define barrier() __asm__ __volatile__("mfence": : :"memory")
+#define barrier() __asm__ __volatile__("": : :"memory")
 
 /**
  * struct callback_head - callback structure for use with RCU and task_work

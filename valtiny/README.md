@@ -66,11 +66,6 @@ In order for the above-mentioned verification to success we need to solve some i
 
 1. Stub the unneeded #includes, and keep the needed primitives and definitions in "fake.h"
 and "fake.c", e.g. IS_ENABLED, barrier(), and bool.
-(*Note: barrier() definition here differs from the kernels respective definition,
-due to Nidhugg compatibility problems with inline assembly. More specifically, here barrier()
-inserts a full memory fence (compiler & CPU), whereas the respective kernel's primitive inserts
-a compiler fence only. However, in this implementation, we could omit the usage of barrier
-everywhere, and still get the same results*.)
 2. Tiny RCU runs on a single CPU, hence we used a mutex to simulate this environment. Since
 we are in a non-preemptible kernel (Tiny RCU is only available for non-preemptible kernels),
 preemption cannot happen everywhere (i.e. threads voluntarily leave the CPU when their work
@@ -86,9 +81,9 @@ Usage
 
 To run under TSO:
 
-	nidhuggc -I . -- --tso fake.c
+	nidhuggc -I . -- --tso --disable-mutex-init-requirement fake.c
 
 To force failure by dividing the grace period in half, and allowing a context switch
 between the two grace periods:
 
-	nidhuggc -I . -DFORCE_FAILURE -- --tso fake.c
+	nidhuggc -I . -DFORCE_FAILURE -- --tso --disable-mutex-init-requirement fake.c
