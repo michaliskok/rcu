@@ -75,18 +75,12 @@
 
 /* Optimization barrier */
 /* The "volatile" is due to gcc bugs */
-/* Originally (in kernel) it is: ("": : :"memory") -- compiler barrier only.
- * A compiler fence is not currently supported by Nidhugg, so we will need
- *  to delete all lines containing the string 'call void asm sideeffect ""'
- *  in the output .ll file.
- */
 #define barrier() __asm__ volatile("": : :"memory")
 
-/* Other barriers (x86 config) */
+/* Other barriers -- x86 config */
 #define mb()    __asm__ volatile("mfence":::"memory")
 #define rmb()   __asm__ volatile("lfence":::"memory")
 #define wmb()   __asm__ volatile("sfence" ::: "memory")
-
 
 #define dma_rmb()       barrier()
 #define dma_wmb()       barrier()
@@ -94,11 +88,6 @@
 #define smp_mb()        mb()
 #define smp_rmb()       dma_rmb()
 #define smp_wmb()       barrier()
-
-#define smp_mb__before_atomic() barrier()
-#define smp_mb__after_atomic()  barrier()
-
-#define smp_mb__after_unlock_lock()     do { } while (0)
 
 #define read_barrier_depends()          do { } while (0)
 #define smp_read_barrier_depends()      do { } while (0)
@@ -117,6 +106,12 @@
 		___p1;					\
 	})
 
+#define smp_mb__before_atomic() barrier()
+#define smp_mb__after_atomic()  barrier()
+
+#define smp_mb__after_unlock_lock()     do { } while (0)
+
+/* Atomic data types */
 typedef struct {
 	int counter;
 } atomic_t;
@@ -125,6 +120,7 @@ typedef struct {
 	long counter;
 } atomic_long_t;
 
+/* Boolean data types */
 typedef _Bool bool;
 
 enum {
@@ -132,6 +128,7 @@ enum {
 	true	= 1
 };
 
+/* Integer types */
 typedef unsigned long ulong;
 
 typedef signed char s8;
@@ -173,13 +170,13 @@ typedef unsigned long long u64;
 #define S64_MAX		((s64)(U64_MAX>>1))
 #define S64_MIN		((s64)(-S64_MAX - 1))
 
+/* Integer division that rounds up */
 #define DIV_ROUND_UP(n,d) (((n) + (d) - 1) / (d))
 
 /* Indirect stringification.  Doing two levels allows the parameter to be a
  * macro itself.  For example, compile with -DFOO=bar, __stringify(FOO)
  * converts to "bar".
  */
-
 #define __stringify_1(x...)     #x
 #define __stringify(x...)       __stringify_1(x)
 
@@ -194,6 +191,7 @@ struct callback_head {
 };
 #define rcu_head callback_head
 
+/* List data types definitions and functions */
 struct list_head {
 	struct list_head *next, *prev;
 };
@@ -238,12 +236,15 @@ static inline void list_add(struct list_head *new, struct list_head *head)
 	     &pos->member != (head);					\
 	     pos = list_next_entry(pos, member))
 
+/* Notifier definitions */
 #define NOTIFY_DONE             0x0000          /* Don't care */
 #define NOTIFY_OK               0x0001          /* Suits me */
 #define NOTIFY_STOP_MASK        0x8000          /* Don't call further */
-#define NOTIFY_BAD              (NOTIFY_STOP_MASK|0x0002)
-/* Bad/Veto action */
+#define NOTIFY_BAD              (NOTIFY_STOP_MASK|0x0002) /* Bad/Veto action */
 
+#define atomic_notifier_chain_register(x, y) do { } while(0)
+
+/* Generic CPU definitions */
 #define CPU_ONLINE              0x0002 /* CPU (unsigned)v is up */
 #define CPU_UP_PREPARE          0x0003 /* CPU (unsigned)v coming up */
 #define CPU_UP_CANCELED         0x0004 /* CPU (unsigned)v NOT coming up */
@@ -287,10 +288,10 @@ static inline void list_add(struct list_head *new, struct list_head *head)
 
 /* "Cheater" definitions based on restricted Kconfig choices. */
 
-#define CONFIG_NR_CPUS 4
+#define CONFIG_NR_CPUS 2
 #define NR_CPUS CONFIG_NR_CPUS
 #define nr_cpu_ids NR_CPUS
-#define HZ 1000
+#define HZ 100
 #define CONFIG_TREE_RCU
 #define CONFIG_SMP
 #define CONFIG_RCU_FANOUT 32
@@ -321,10 +322,12 @@ static inline void list_add(struct list_head *new, struct list_head *head)
 #undef CONFIG_TASKS_RCU
 #undef CONFIG_PREEMPT_COUNT
 
+/* Some definitions based on CONFIG_NO_HZ_FULL=n option */
 #define tick_nohz_full_enabled() 0
 #define is_housekeeping_cpu(cpu) 1
 #define housekeeping_affine(cpu) do { } while (0)
 
+/* Stub some compiler directives */
 #define ____cacheline_internodealigned_in_smp
 #define __percpu
 #define __rcu
@@ -343,9 +346,7 @@ static inline void list_add(struct list_head *new, struct list_head *head)
 struct lock_class_key { };
 
 
-/*
- * Cheater definitions for percpu variables 
- */
+/* "Cheater" definitions for percpu variables -- arrays are used instead */
 #define DECLARE_PER_CPU(type, name) extern __typeof__(type) name[NR_CPUS]
 #define DEFINE_PER_CPU(type, name)  __typeof__(type) name[NR_CPUS]
 #define DEFINE_PER_CPU_SHARED_ALIGNED(type, name) DEFINE_PER_CPU(type, name)
@@ -381,11 +382,12 @@ struct lock_class_key { };
         do { } while (0)
 #define trace_rcu_barrier(name, s, cpu, cnt, done) do { } while (0)
 
-/* Modules macros */
+/* Module macros */
 #define MODULE_ALIAS(x)
 #define module_param(name, type, perm)
 #define EXPORT_SYMBOL_GPL(sym)
 
+/* Logging macros */
 #define pr_info(args...) fprintf(stderr, args)
 #define pr_err(args...) fprintf(stderr, args)
 #define pr_cont(args...) fprintf(stderr, args)
@@ -394,6 +396,7 @@ struct lock_class_key { };
 
 #define lockdep_set_class_and_name(lock, class, name) do { } while (0)
 
+/* Stub some rcu_expedited stuff */
 typedef int cpumask_var_t;
 
 int rcu_expedited;
@@ -407,14 +410,25 @@ int rcu_expedited;
 #define free_cpumask_var(cm) do { } while (0)
 #define udelay(time) do { } while (0)
 
-#define set_current_state(STATE)
-#define __set_current_state(STATE) set_current_state(STATE)
+/* Do not keep track of the process' state */
+#define set_current_state(STATE) 
+#define __set_current_state(STATE)
+
+/* Nidhugg will take care of the scheduling for us */
 #define schedule()
 
+/* is_idle_task should NOT be a statically defined macro. 
+ * However, due to the fact that we are verifying only a portion of Tree RCU's
+ * source code, we CAN set it equal to 1. That way, no warning is triggered
+ * and there should not be any behavioural change for RCU.
+ * idle_task just returns a null pointer.
+ * signal_pending(x) always returns false.
+ */
 #define is_idle_task(current) 1
 #define idle_task(x) NULL
 #define signal_pending(x) 0
 
+/* Our definition for task_struct */
 struct task_struct {
 	int pid;
 	pthread_t tid;
@@ -423,19 +437,22 @@ struct task_struct {
 };
 struct task_struct __thread *current;
 
-#define smp_processor_id()	0
+/* CPU iterators based on CONFIG_HOTPLUG_CPU=n */
+#define smp_processor_id() 0
 #define for_each_possible_cpu(cpu) for ((cpu) = 0; (cpu) < nr_cpu_ids; (cpu)++)
 #define for_each_online_cpu(cpu) for_each_possible_cpu(cpu)
 #define for_each_cpu(cpu, cm) for_each_possible_cpu(cpu)
 
+/* Softirq definitions and data types */
 #define open_softirq(x, y) do { } while (0)
-int __thread need_softirq;
-#define raise_softirq(x) do { need_softirq = 1; } while (0)
+int need_softirq[nr_cpu_ids];
+#define raise_softirq(x) do { need_softirq[get_cpu()] = 1; } while (0)
 #define in_softirq() 0
 
 struct softirq_action {
 };
 
+/* Notifier data types -- not of much interest */ 
 typedef int (*notifier_fn_t)(struct notifier_block *nb,
 			     unsigned long action, void *data);
 
@@ -445,8 +462,7 @@ struct notifier_block {
 	int priority;
 };
 
-#define atomic_notifier_chain_register(x, y) do { } while(0)
-
+/* Warning statements which trigger assertions */
 int noassert;
 #ifdef ORDERING_BUG
 #define SET_NOASSERT() do { noassert = 1; } while (0)
@@ -477,10 +493,10 @@ int noassert;
 #define panic(msg) { perror(msg); assert(0); }
 #define IS_ERR(x) 0
 
-/* More atomic operations based on cheater definitions */
-#define atomic_add(i, v) __atomic_add_fetch(&(v)->counter, i, __ATOMIC_SEQ_CST)
+/* Atomic operations based on cheater definitions and gcc built-ins (x86_32) */
+#define atomic_add(i, v) __atomic_add_fetch(&(v)->counter, i, __ATOMIC_RELAXED)
 #define atomic_add_return(i, v) atomic_add(i, v)
-#define atomic_sub(i, v) __atomic_sub_fetch(&(v)->counter, i, __ATOMIC_SEQ_CST)
+#define atomic_sub(i, v) __atomic_sub_fetch(&(v)->counter, i, __ATOMIC_RELAXED)
 #define atomic_inc(v) atomic_add(1, v)
 #define atomic_inc_return(v) atomic_inc(v)
 #define atomic_dec(v) atomic_sub(1, v)
@@ -489,7 +505,7 @@ int noassert;
 #define atomic_read(v) ACCESS_ONCE((v)->counter)
 #define atomic_cmpxchg(v, old, new)					\
 	__atomic_compare_exchange(&(v)->counter, &old, &new, 0,		\
-				  __ATOMIC_SEQ_CST, __ATOMIC_SEQ_CST)
+				  __ATOMIC_RELAXED, __ATOMIC_RELAXED)
 
 #define atomic_long_add(i, v) atomic_add(i, v)
 #define atomic_long_add_return(i, v) atomic_add_return(i, v)
@@ -501,6 +517,7 @@ int noassert;
 #define atomic_long_read(v) atomic_read(v)
 #define atomic_long_cmpxchg(v, old, new) atomic_cmpxchg(v, old, new)
 
+/* Preempt and bh definitions */
 #define preempt_enable() barrier()
 #define preempt_disable() barrier()
 #define preempt_disable_notrace() barrier()
@@ -510,6 +527,7 @@ int noassert;
 
 #define prefetch(next) do { } while (0)
 
+/* More CPU-relevant definitions, CONFIG_HOTPLUG_CPU=n  */
 #define jiffies 0
 #define cpu_is_offline(cpu) 0
 #define cpu_is_online(cpu) 1
@@ -527,11 +545,13 @@ int noassert;
 
 #define smp_call_function_single(cpu, fun, arg, wait) do { } while (0)
 
+/* Functions designated to run in early_initcalls must be called explicitly */
 #define early_initcall(fn) 
 
-/* Declarations to emulate CPU, interrupts, and scheduling.  */
 
-extern bool test_done;
+/* Declarations to emulate CPU, interrupts, and scheduling.  */
+void __VERIFIER_assume(int);
+
 extern int GP_KTHREAD_CPU;
 
 int get_cpu(void);

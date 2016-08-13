@@ -76,25 +76,11 @@ void set_cpu(void *cpu)
  * An nmi_lock indicates that the corresponding thread is in an NMI
  *	handler.  You cannot acquire either cpu_lock or irq_lock while
  *	holding nmi_lock.
- * These locks must be initialized dynamically, if we want the program 
- *      to be validated by Nidhugg.
  */
 
-pthread_mutex_t cpu_lock[nr_cpu_ids];
-pthread_mutex_t irq_lock[nr_cpu_ids];
-pthread_mutex_t nmi_lock[nr_cpu_ids];
-
-/*
- * Initializes the locks corresponding to each CPU
- */
-void init_cpus(void)
-{
-	for (int i = 0; i < nr_cpu_ids; i++) {
-		pthread_mutex_init(&cpu_lock[i], NULL);
-		pthread_mutex_init(&irq_lock[i], NULL);
-		pthread_mutex_init(&nmi_lock[i], NULL);
-	}
-}
+pthread_mutex_t cpu_lock[nr_cpu_ids] = { [0 ... nr_cpu_ids-1] = PTHREAD_MUTEX_INITIALIZER };
+pthread_mutex_t irq_lock[nr_cpu_ids] = { [0 ... nr_cpu_ids-1] = PTHREAD_MUTEX_INITIALIZER };
+pthread_mutex_t nmi_lock[nr_cpu_ids] = { [0 ... nr_cpu_ids-1] = PTHREAD_MUTEX_INITIALIZER };
 
 /*
  * Acquire the lock of the specified CPU. It is assumed that the CPU
@@ -121,23 +107,17 @@ void fake_release_cpu(int cpu)
 }
 
 /*
- * Nidhugg function that returns a non-deterministic integer value.
- * This function needs to be declared before used and is documented
- * in the Nidhugg manual.
- */
-//int __VERIFIER_nondet_uint();
-
-/*
  * Fake cond_resched by having the thread running on the CPU drop
- * the CPU lock and then try to acquire the lock of a random CPU. 
+ * the CPU lock and then try to acquire the lock of the same CPU. 
  * Before dropping the lock rcu_note_context_switch is called, since,
  * in theory, the __schedule function would have called it.
  */
 int cond_resched(void)
 {
+	int ncpu;
+  
 	rcu_note_context_switch();
-	fake_release_cpu(get_cpu());
-//	fake_acquire_cpu(__VERIFIER_nondet_uint() % nr_cpu_ids);
+	fake_release_cpu(get_cpu());	
 	fake_acquire_cpu(get_cpu());
 
 	return 0;
@@ -148,6 +128,13 @@ void resched_cpu(int cpu)
 	/* Uniplemented */
 }
 
+/* 
+ * Functions that emulate interrupt enabling/disabling.
+ *
+ * These functions acquire the irq_lock if it is not a nested interrupt,
+ * release it if we are returning to kernel space, and count the current 
+ * interrupt depth.
+ */
 static int local_irq_depth[nr_cpu_ids];
 
 void local_irq_save(unsigned long flags)
@@ -187,22 +174,44 @@ int irqs_disabled_flags(unsigned long flags)
 	return !!local_irq_depth[get_cpu()];
 }
 
+/*
+ * Inform RCU that we are entering an interrupt handler.
+ */
+void irq_enter(void)
+{
+	rcu_irq_enter();
+}
+
+/*
+ * If this CPU has pending callbacks, execute __do_softirq(). Since we only
+ * care about RCU callbacks, just rcu_process_callbacks() is called.
+ * Inform RCU that we are exiting an interrupt handler.
+ */
+void irq_exit(void)
+{
+	if (need_softirq[get_cpu()]) {
+		rcu_process_callbacks(NULL);
+		need_softirq[get_cpu()] = 0;
+	}
+	rcu_irq_exit();
+}
+
+/*
+ * Main interrupt function. This function is designed to emulate timer
+ * interrupts, however, I/O interrupts closely resemble timer interrupts.
+ * This function assumes that the interrupt occured while in kernel space.
+ * The irq_lock is held during the execution of the interrupt handler,
+ * but it is released when softirqs are serviced.
+ */
 void do_IRQ(void)
 {
-	unsigned long flags;
-
 	local_irq_disable();
+	irq_enter();
 	
-	rcu_irq_enter();
-	rcu_check_callbacks(flags);
-	rcu_irq_exit();
-	
-	local_irq_enable();
+	rcu_check_callbacks(0);
 
-	if (need_softirq) {
-		rcu_process_callbacks(NULL);
-		need_softirq = 0;
-	}
+	local_irq_enable();
+	irq_exit();
 }
 
 #endif /* __FAKE_SCHED_H */

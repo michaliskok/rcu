@@ -1394,7 +1394,7 @@ static int rcu_future_gp_cleanup(struct rcu_state *rsp, struct rcu_node *rnp)
  * a kthread that has not yet been created.
  */
 static void rcu_gp_kthread_wake(struct rcu_state *rsp)
-{if (get_cpu() != GP_KTHREAD_CPU) {wake_up(&rsp->gp_wq); return;}
+{
 	if (current == rsp->gp_kthread ||
 	    !ACCESS_ONCE(rsp->gp_flags) ||
 	    !rsp->gp_kthread)
@@ -1774,7 +1774,7 @@ static int __noreturn rcu_gp_kthread(void *arg)
 	struct rcu_node *rnp = rcu_get_root(rsp);
 
 	for (;;) {
-
+		
 		/* Handle grace-period start. */
 		for (;;) {
 			trace_rcu_grace_period(rsp->name,
@@ -1850,7 +1850,7 @@ static int __noreturn rcu_gp_kthread(void *arg)
 		}
 
 		/* Handle grace-period end. */
-		rcu_gp_cleanup(rsp);
+		rcu_gp_cleanup(rsp);		
 	}
 }
 
@@ -3540,14 +3540,14 @@ static int __init rcu_spawn_gp_kthread(void)
 	struct task_struct *t;
 
 	rcu_scheduler_fully_active = 1;
-	for_each_rcu_flavor(rsp) {
+	/*for_each_rcu_flavor(rsp) {
 		t = kthread_run(rcu_gp_kthread, rsp, "%s", rsp->name);
 		BUG_ON(IS_ERR(t));
 		rnp = rcu_get_root(rsp);
 		raw_spin_lock_irqsave(&rnp->lock, flags);
 		rsp->gp_kthread = t;
 		raw_spin_unlock_irqrestore(&rnp->lock, flags);
-	}
+		}*/t = kthread_run(rcu_gp_kthread, &rcu_sched_state, "%s",rcu_sched_state.name); rnp = rcu_get_root(&rcu_sched_state); raw_spin_lock_irqsave(&rnp->lock, flags); rcu_sched_state.gp_kthread = t; raw_spin_unlock_irqrestore(&rnp->lock, flags);
 	rcu_spawn_nocb_kthreads();
 	rcu_spawn_boost_kthreads();
 	return 0;

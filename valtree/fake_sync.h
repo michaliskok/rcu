@@ -1,5 +1,5 @@
 /*
- * "Fake" definitions to emulate some kernel locking mechanisms.
+ * "Fake" definitions to emulate some kernel synchronization mechanisms.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -18,13 +18,18 @@
  * Author: Michalis Kokologiannakis <mixaskok@gmail.com>
  */
 
-#ifndef __FAKE_LOCKS_H
-#define __FAKE_LOCKS_H
+#ifndef __FAKE_SYNC_H
+#define __FAKE_SYNC_H
 
 #include <pthread.h>
 
-/* Fake datatypes for various locking mechanisms */
-
+/* 
+ * Fake datatypes for various synchronization mechanisms 
+ *
+ * raw_spinlock_t, spinlock_t, mutex_t are emulated using pthread_mutex_lock.
+ * In kernel, these are architecture-dependent types, with similar but not
+ * identical behaviour which can be modeled with pthread_mutex_lock.
+ */
 typedef pthread_mutex_t raw_spinlock_t;
 #define __RAW_SPIN_LOCK_UNLOCKED(lockname) PTHREAD_MUTEX_INITIALIZER
 
@@ -36,19 +41,30 @@ struct mutex {
 };
 #define __MUTEX_INITIALIZER(lockname) { .lock = PTHREAD_MUTEX_INITIALIZER }
 
+/*
+ * wait_queue_head_t is just an empty struct. 
+ * Although wait queues can be also modeled with condition variables, 
+ * for our purposes, and due to the fact that Nidhugg uses the spin-assume 
+ * transformation, busy-waiting is sufficient.
+ */
 typedef struct __wait_queue_head {
-	spinlock_t     lock;
-	pthread_cond_t cond;
 } wait_queue_head_t;
 
+/*
+ * Since threads waiting on a waitqueue are just spinning, threads waiting
+ * for a completion will be spinning as well.
+ * done is declared volatile in order to prevent the compiler from optimizing
+ * the busy-loop.
+ */
 struct completion {
-	unsigned int      done;
-	wait_queue_head_t wait;
+	volatile unsigned int done;
+	wait_queue_head_t     wait;
 };
 
 
-/* Raw spinlocks functions */
-
+/* 
+ * Raw-spinlock functions
+ */
 void raw_spin_lock_init(raw_spinlock_t *l)
 {
 	if (pthread_mutex_init(l, NULL))
@@ -112,8 +128,9 @@ int raw_spin_trylock(raw_spinlock_t *l)
 }
 
 
-/* Spinlock functions */
-
+/* 
+ * Spinlock functions
+ */
 void spin_lock_irq(spinlock_t *lock)
 {
 	raw_spin_lock_irq(lock);
@@ -135,8 +152,9 @@ void spin_unlock_irqrestore(spinlock_t *lock, unsigned long flags)
 }
 
 
-/* Mutex functions */
-
+/* 
+ * Mutex functions
+ */
 void mutex_lock(struct mutex *l)
 {
 	if (pthread_mutex_lock(&l->lock))
@@ -150,54 +168,39 @@ void mutex_unlock(struct mutex *l)
 }
 
 
-/* Waitqueues functions */
+/* 
+ * Waitqueue functions
+ */
+#define init_waitqueue_head(wait_queue_head) do { } while (0)
 
-void init_waitqueue_head(wait_queue_head_t *w)
-{
-	if (pthread_mutex_init(&w->lock, NULL))
-		exit(-1);
-	if (pthread_cond_init(&w->cond, NULL))
-		exit(-1);
-}
+#define wake_up(wait_queue_head) do { } while (0)
+#define wake_up_locked(wait_queue_head) do { } while (0)
 
-void wake_up(wait_queue_head_t *w)
-{
-	if (pthread_mutex_lock(&w->lock))
-		exit(-1);
-	pthread_cond_signal(&w->cond);
-	if (pthread_mutex_unlock(&w->lock))
-		exit(-1);
-}
-
-void wake_up_locked(wait_queue_head_t *w)
-{
-	pthread_cond_signal(&w->cond);
-}
-
-#define wait_event_interruptible(w, condition)				\
-	({								\
-		if (pthread_mutex_lock(&(&w)->lock))			\
-			exit(-1);					\
-		fake_release_cpu(get_cpu());				\
-		do_IRQ();						\
-		while (!(condition)) {					\
-			pthread_cond_wait(&(&w)->cond, &(&w)->lock);}	\
-		if (pthread_mutex_unlock(&(&w)->lock))			\
-			exit(-1);					\
-		if (test_done)						\
-			pthread_exit(NULL);				\
-		fake_acquire_cpu(get_cpu());				\
-	})
+#define wait_event_interruptible(w, condition)	\
+({					        \
+	do_IRQ();				\
+	fake_release_cpu(get_cpu());		\
+	while (!(condition))			\
+		;				\
+	fake_acquire_cpu(get_cpu());		\
+}) 
 
 #define wait_event_interruptible_timeout(w, condition, timeout)		\
-	({								\
-		wait_event_interruptible(w, condition);			\
-		true;							\
-	})
+({								        \
+	do_IRQ();							\
+	cond_resched();							\
+	do_IRQ();							\
+	fake_release_cpu(get_cpu());					\
+	while (!(condition))						\
+		;							\
+	fake_acquire_cpu(get_cpu());					\
+	true;								\
+})
 
 
-/* Completion functions */
-
+/* 
+ * Completion functions
+ */
 void init_completion(struct completion *x)
 {
         x->done = 0;
@@ -208,23 +211,16 @@ void wait_for_completion(struct completion *x)
 {
 	might_sleep();
 
-	raw_spin_lock(&x->wait.lock); //spin_lock_irq(&x->wait.lock);
+	do_IRQ();
         fake_release_cpu(get_cpu());
-	//do_IRQ();
-	while(!x->done) { 
-		pthread_cond_wait(&x->wait.cond, &x->wait.lock);}
-	raw_spin_unlock(&x->wait.lock); //spin_unlock_irq(&x->wait.lock);
+	while (!x->done)
+		;
 	fake_acquire_cpu(get_cpu());
 }
-
+	
 void complete(struct completion *x)
 {
-	unsigned long flags;
-
-	spin_lock_irqsave(&x->wait.lock, flags);
 	x->done++;
-	wake_up_locked(&x->wait);
-	spin_unlock_irqrestore(&x->wait.lock, flags);
 }
 
-#endif /* __FAKE_LOCKS_H */
+#endif /* __FAKE_SYNC_H */

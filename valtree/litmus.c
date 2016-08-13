@@ -19,69 +19,47 @@
  */
 
 #include "fake_defs.h"
-#include "fake_locks.h"
+#include "fake_sync.h"
 #include <linux/rcupdate.h>
 #include <update.c>
-#include <tree.c>
+#include "tree.c"
 #include "fake_sched.h"
 
-/* Memory allocation boils down to a call to free */
+/* Memory de-allocation boils down to a call to free */
 void kfree(const void *p)
 {
 	free((void *) p);
 }
 
-bool test_done;
-
 /* Code under test */
 
-int varx[nr_cpu_ids];
-int vary[nr_cpu_ids];
-
-int __thread __unbuffered_tpr_x;
-int __thread __unbuffered_tpr_y;
+int __unbuffered_tpr_x;
+int __unbuffered_tpr_y;
 
 int x;
 int y;
 
-void rcu_reader(void)
-{
-	rcu_read_lock();
-	__unbuffered_tpr_x = x;
-	__unbuffered_tpr_y = y;
-	varx[get_cpu()] = x;
-	vary[get_cpu()] = y;
-	rcu_read_unlock();
-}
-
-void *thread_process_reader(void *cpu)
+void *thread_reader(void *cpu)
 {
 	set_cpu(cpu);
 	fake_acquire_cpu(get_cpu());
 	
-	while (!test_done) {
-		rcu_reader();
-		cond_resched();
-		do_IRQ();
-	}
+	rcu_read_lock();	
+	__unbuffered_tpr_x = x;
+	do_IRQ();	
+#ifdef FORCE_FAILURE
+	cond_resched();
+	do_IRQ();
+#endif	
+        __unbuffered_tpr_y = y;	
+	rcu_read_unlock();
+#ifndef FORCE_FAILURE
+	cond_resched();
+	do_IRQ();
+#endif 
 
-	fake_release_cpu(get_cpu());
-	assert(!(__unbuffered_tpr_x == 0 && __unbuffered_tpr_y == 1));
-}
-
-void *thread_process_reader_undisrupted(void *cpu)
-{
-	set_cpu(cpu);
-	fake_acquire_cpu(get_cpu());
-
-	while (!test_done) {		
-		rcu_reader();
-		cond_resched();
-		do_IRQ();
-	}
-
-	fake_release_cpu(get_cpu());
-	assert(!(__unbuffered_tpr_x == 0 && __unbuffered_tpr_y == 1));
+	fake_release_cpu(get_cpu());	
+	return NULL;
 }
 
 void *thread_update(void *cpu)
@@ -92,25 +70,9 @@ void *thread_update(void *cpu)
 	x = 1;
 	synchronize_rcu();
 	y = 1;
-
-	fake_release_cpu(get_cpu());
-
-	test_done = 1;
-	assert(!(__unbuffered_tpr_x == 0 && __unbuffered_tpr_y == 1));
-}
-
-void *random_kthread(void *cpu)
-{
-	set_cpu(cpu);
-	fake_acquire_cpu(get_cpu());
-     	
-	while (!test_done) {
-		cond_resched();
-		do_IRQ();
-	}
 	
 	fake_release_cpu(get_cpu());
-	assert(!(__unbuffered_tpr_x == 0 && __unbuffered_tpr_y == 1));
+	return NULL;
 }
 
 void *run_gp_kthread(void *arg)
@@ -118,58 +80,38 @@ void *run_gp_kthread(void *arg)
 	struct rcu_state *rsp = arg;
 
 	set_cpu(&GP_KTHREAD_CPU);
-	/* Set current to this gp_kthread so it won't wake itself up */
-	current = rsp->gp_kthread;
+	current = rsp->gp_kthread; /* rcu_gp_kthread must not wake itself */
+	
 	fake_acquire_cpu(get_cpu());
-
+	
 	rcu_gp_kthread(rsp);
 	
 	fake_release_cpu(get_cpu());
+	return NULL;
 }
 
 int main()
 {
-	struct rcu_state *rsp;
+	pthread_t tu;
 	int cpu_id[nr_cpu_ids];
-	pthread_t tid[nr_cpu_ids];
-	pthread_t tt;
 
-	pthread_mutex_init(&rcu_sched_state.onoff_mutex.lock, NULL);
-	pthread_mutex_init(&rcu_sched_state.barrier_mutex.lock, NULL);
-	pthread_mutex_init(&rcu_sched_state.orphan_lock, NULL);
-	pthread_mutex_init(&rcu_bh_state.onoff_mutex.lock, NULL);
-	pthread_mutex_init(&rcu_bh_state.barrier_mutex.lock, NULL);
-	pthread_mutex_init(&rcu_bh_state.orphan_lock, NULL);
-
-	init_cpus();
 	rcu_init();
 	for (int i = 0; i < nr_cpu_ids; i++) {
 		cpu_id[i] = i;
 		set_cpu(&cpu_id[i]);
 		rcu_idle_enter();
 	}
-
-        rcu_spawn_gp_kthread(); 
-	if (pthread_create(&tid[1], NULL, thread_update, &cpu_id[1]))
+	
+        rcu_spawn_gp_kthread(); /* rcu_spawn_gp_kthread changed @ tree.c */
+	if (pthread_create(&tu, NULL, thread_update, &cpu_id[0]))
 		abort();
-	if (pthread_create(&tid[2], NULL, thread_process_reader, &cpu_id[2]))
-		abort();
-	if (pthread_create(&tid[3], NULL, thread_process_reader_undisrupted, &cpu_id[3]))
-		abort();
-	if (pthread_create(&tt, NULL, random_kthread, &cpu_id[1]))
+	(void)thread_reader(&cpu_id[1]);
+	
+	if (pthread_join(tu, NULL))
 		abort();
 	
-	if (pthread_join(tid[1], NULL))
-		abort();
-	if (pthread_join(tid[2], NULL))
-		abort(); 
-	if (pthread_join(tid[3], NULL))
-		abort();
-	if (pthread_join(tt, NULL))
-		abort();
-
-	for (int i = 0; i < nr_cpu_ids; i++)
-	  assert(!(varx[i] == 0 && vary[i] == 1));
-
+	assert(__unbuffered_tpr_y == 0 || __unbuffered_tpr_x == 1 ||
+	       CK_NOASSERT());
+	
 	return 0;
 }
