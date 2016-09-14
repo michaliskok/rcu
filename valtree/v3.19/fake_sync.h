@@ -131,6 +131,20 @@ int raw_spin_trylock(raw_spinlock_t *l)
 /* 
  * Spinlock functions
  */
+void spin_lock(spinlock_t *l)
+{
+	preempt_disable();
+	if (pthread_mutex_lock(l))
+		exit(-1);
+}
+
+void spin_unlock(spinlock_t *l)
+{
+	if (pthread_mutex_unlock(l))
+		exit(-1);
+	preempt_enable();
+}
+
 void spin_lock_irq(spinlock_t *lock)
 {
 	raw_spin_lock_irq(lock);
@@ -185,10 +199,10 @@ void mutex_unlock(struct mutex *l)
 	fake_acquire_cpu(get_cpu());		\
 }) 
 
+#ifdef FORCE_FAILURE_3
 #define wait_event_interruptible_timeout(w, condition, timeout)		\
 ({								        \
-	do_IRQ();							\
-	cond_resched();							\
+	rcu_gp_fqs(&rcu_sched_state, RCU_SAVE_DYNTICK);			\
 	do_IRQ();							\
 	fake_release_cpu(get_cpu());					\
 	while (!(condition))						\
@@ -196,6 +210,17 @@ void mutex_unlock(struct mutex *l)
 	fake_acquire_cpu(get_cpu());					\
 	true;								\
 })
+#else
+#define wait_event_interruptible_timeout(w, condition, timeout)		\
+({								        \
+	do_IRQ();							\
+	fake_release_cpu(get_cpu());					\
+	while (!(condition))						\
+		;							\
+	fake_acquire_cpu(get_cpu());					\
+	true;								\
+})
+#endif
 
 
 /* 
@@ -211,7 +236,6 @@ void wait_for_completion(struct completion *x)
 {
 	might_sleep();
 
-	do_IRQ();
         fake_release_cpu(get_cpu());
 	while (!x->done)
 		;

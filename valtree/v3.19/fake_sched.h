@@ -55,13 +55,13 @@ int get_cpu(void)
  * set_cpu - sets the CPU on which a thread will run.
  *
  * It is preferrable that __running_cpu variable is not modified
- * directly, but only via get_cpu and set_cpu functions. Since this
- * function has to be called when a thread function starts, it takes
- * as argument the thread's argument.
+ * directly, but only via get_cpu and set_cpu functions. This function
+ * should be called when a thread starts running, before acquiring the
+ * CPU's lock.
  */
-void set_cpu(void *cpu)
+void set_cpu(int cpu)
 {
-	__running_cpu = *((int *) cpu);
+	__running_cpu = cpu;
 }
 
 /*
@@ -114,8 +114,6 @@ void fake_release_cpu(int cpu)
  */
 int cond_resched(void)
 {
-	int ncpu;
-  
 	rcu_note_context_switch();
 	fake_release_cpu(get_cpu());	
 	fake_acquire_cpu(get_cpu());
@@ -207,7 +205,7 @@ void do_IRQ(void)
 {
 	local_irq_disable();
 	irq_enter();
-	
+
 	rcu_check_callbacks(0);
 
 	local_irq_enable();

@@ -186,9 +186,12 @@ static int rcu_gp_in_progress(struct rcu_state *rsp)
  */
 void rcu_sched_qs(void)
 {
+#ifdef FORCE_FAILURE_6
+	return;
+#endif
 	if (!rcu_sched_data[get_cpu()].passed_quiesce) {
 		trace_rcu_grace_period(TPS("rcu_sched"),
-							 rcu_sched_data[get_cpu()].gpnum,
+				       rcu_sched_data[get_cpu()].gpnum,
 				       TPS("cpuqs"));
 		rcu_sched_data[get_cpu()].passed_quiesce = 1;
 	}
@@ -198,7 +201,7 @@ void rcu_bh_qs(void)
 {
 	if (!rcu_bh_data[get_cpu()].passed_quiesce) {
 		trace_rcu_grace_period(TPS("rcu_bh"),
-							 rcu_bh_data[get_cpu()].gpnum,
+				       rcu_bh_data[get_cpu()].gpnum,
 				       TPS("cpuqs"));
 	  rcu_bh_data[get_cpu()].passed_quiesce = 1;
 	}
@@ -206,7 +209,7 @@ void rcu_bh_qs(void)
 
 static DEFINE_PER_CPU(int, rcu_sched_qs_mask);
 
-static DEFINE_PER_CPU(struct rcu_dynticks, rcu_dynticks) = { [0 ... nr_cpu_ids-1] = {
+static DEFINE_PER_CPU(struct rcu_dynticks, rcu_dynticks) = { [0 ... NR_CPUS-1] = {
 	.dynticks_nesting = DYNTICK_TASK_EXIT_IDLE,
 	.dynticks = ATOMIC_INIT(1),
 #ifdef CONFIG_NO_HZ_FULL_SYSIDLE
@@ -1554,7 +1557,14 @@ static bool __note_gp_changes(struct rcu_state *rsp, struct rcu_node *rnp,
 		rdp->gpnum = rnp->gpnum;
 		trace_rcu_grace_period(rsp->name, rdp->gpnum, TPS("cpustart"));
 		rdp->passed_quiesce = 0;
+#ifdef FORCE_FAILURE_5
+		rdp->qs_pending = 0;
+#else
 		rdp->qs_pending = !!(rnp->qsmask & rdp->grpmask);
+#endif
+#ifdef FORCE_FAILURE_4
+		rnp->qsmask &= ~rdp->grpmask;
+#endif
 		zero_cpu_stall_ticks(rdp);
 	}
 	return ret;
@@ -1637,7 +1647,11 @@ static int rcu_gp_init(struct rcu_state *rsp)
 		smp_mb__after_unlock_lock();
 		rdp = &rsp->rda[get_cpu()];
 		rcu_preempt_check_blocked_tasks(rnp);
+#ifdef FORCE_FAILURE_2
+		rnp->qsmask &= ~rdp->grpmask;
+#else
 		rnp->qsmask = rnp->qsmaskinit;
+#endif
 		ACCESS_ONCE(rnp->gpnum) = rsp->gpnum;
 		WARN_ON_ONCE(rnp->completed != rsp->completed);
 		ACCESS_ONCE(rnp->completed) = rsp->completed;
@@ -1948,6 +1962,9 @@ rcu_report_qs_rnp(unsigned long mask, struct rcu_state *rsp,
 {
 	struct rcu_node *rnp_c;
 
+#ifdef FORCE_FAILURE_7
+	return;
+#endif
 	/* Walk up the rcu_node hierarchy. */
 	for (;;) {
 		if (!(rnp->qsmask & mask)) {
@@ -1961,12 +1978,14 @@ rcu_report_qs_rnp(unsigned long mask, struct rcu_state *rsp,
 						 mask, rnp->qsmask, rnp->level,
 						 rnp->grplo, rnp->grphi,
 						 !!rnp->gp_tasks);
+#ifndef FORCE_FAILURE_8
 		if (rnp->qsmask != 0 || rcu_preempt_blocked_readers_cgp(rnp)) {
 
 			/* Other bits still set at this level, so done. */
 			raw_spin_unlock_irqrestore(&rnp->lock, flags);
 			return;
 		}
+#endif
 		mask = rnp->grpmask;
 		if (rnp->parent == NULL) {
 

@@ -29,6 +29,7 @@
 /* Definitions taken from the Linux Kernel (v.3.19) */
 
 #define __force
+#define __kernel
 #define notrace
 
 #undef offsetof
@@ -77,28 +78,69 @@
 /* The "volatile" is due to gcc bugs */
 #define barrier() __asm__ volatile("": : :"memory")
 
-/* Other barriers -- x86 config */
-#define mb()    __asm__ volatile("mfence":::"memory")
-#define rmb()   __asm__ volatile("lfence":::"memory")
-#define wmb()   __asm__ volatile("sfence" ::: "memory")
+/* Other barriers -- x86 and powerpc config */
+#ifdef POWERPC
+# define __stringify_in_c(...) #__VA_ARGS__
+# define stringify_in_c(...)   __stringify_in_c(__VA_ARGS__) " "
 
-#define dma_rmb()       barrier()
-#define dma_wmb()       barrier()
+# define mb()   __asm__ __volatile__ ("sync" : : : "memory")
+# define rmb()  __asm__ __volatile__ ("sync" : : : "memory")
+# define wmb()  __asm__ __volatile__ ("sync" : : : "memory")
 
-#define smp_mb()        mb()
-#define smp_rmb()       dma_rmb()
-#define smp_wmb()       barrier()
+# define SMPWMB      eieio
+# define LWSYNC      sync 
 
-#define read_barrier_depends()          do { } while (0)
-#define smp_read_barrier_depends()      do { } while (0)
+# define __lwsync()      __asm__ __volatile__ (stringify_in_c(LWSYNC) : : :"memory")
+# define dma_rmb()       __lwsync()
+# define dma_wmb()       __asm__ __volatile__ (stringify_in_c(SMPWMB) : : :"memory")
 
-#define smp_store_release(p, v)			\
-	do {					\
-		barrier();			\
-		ACCESS_ONCE(*p) = (v);		\
+# define smp_lwsync()    __lwsync()
+
+# define smp_mb()        mb()
+# define smp_rmb()       __lwsync()
+# define smp_wmb()       __asm__ __volatile__ (stringify_in_c(SMPWMB) : : :"memory")
+
+# define read_barrier_depends()          do { } while (0)
+# define smp_read_barrier_depends()      do { } while (0)
+
+# define smp_store_release(p, v)					\
+do {                                                                    \
+        smp_lwsync();                                                   \
+        ACCESS_ONCE(*p) = (v);                                          \
+} while (0)
+
+# define smp_load_acquire(p)						\
+({                                                                      \
+        typeof(*p) ___p1 = ACCESS_ONCE(*p);                             \
+									\
+        smp_lwsync();                                                   \
+        ___p1;                                                          \
+})
+
+# define smp_mb__before_atomic()     smp_mb()
+# define smp_mb__after_atomic()      smp_mb()
+#else /* #ifdef POWERPC */
+# define mb()    __asm__ volatile("mfence":::"memory")
+# define rmb()   __asm__ volatile("lfence":::"memory")
+# define wmb()   __asm__ volatile("sfence" ::: "memory")
+
+# define dma_rmb()       barrier()
+# define dma_wmb()       barrier()
+
+# define smp_mb()        mb()
+# define smp_rmb()       dma_rmb()
+# define smp_wmb()       barrier()
+
+# define read_barrier_depends()          do { } while (0)
+# define smp_read_barrier_depends()      do { } while (0)
+
+# define smp_store_release(p, v)			\
+	do {						\
+		barrier();				\
+		ACCESS_ONCE(*p) = (v);			\
 	} while (0)
 
-#define smp_load_acquire(p)				\
+# define smp_load_acquire(p)				\
 	({						\
 		__typeof__(*p) ___p1 = ACCESS_ONCE(*p);	\
 							\
@@ -106,10 +148,11 @@
 		___p1;					\
 	})
 
-#define smp_mb__before_atomic() barrier()
-#define smp_mb__after_atomic()  barrier()
+# define smp_mb__before_atomic() barrier()
+# define smp_mb__after_atomic()  barrier()
 
-#define smp_mb__after_unlock_lock()     do { } while (0)
+# define smp_mb__after_unlock_lock()     do { } while (0)
+#endif /* #ifdef POWERPC */
 
 /* Atomic data types */
 typedef struct {
@@ -288,10 +331,16 @@ static inline void list_add(struct list_head *new, struct list_head *head)
 
 /* "Cheater" definitions based on restricted Kconfig choices. */
 
-#define CONFIG_NR_CPUS 2
+#ifdef FORCE_FAILURE_8
+# define CONFIG_NR_CPUS 32
+#else
+# define CONFIG_NR_CPUS 2
+#endif
+
 #define NR_CPUS CONFIG_NR_CPUS
 #define nr_cpu_ids NR_CPUS
 #define HZ 100
+
 #define CONFIG_TREE_RCU
 #define CONFIG_SMP
 #define CONFIG_RCU_FANOUT 32
@@ -330,8 +379,9 @@ static inline void list_add(struct list_head *new, struct list_head *head)
 /* Stub some compiler directives */
 #define ____cacheline_internodealigned_in_smp
 #define __percpu
-#define __rcu
-#define __init
+#define __rcu 
+#define __init 
+#define __jiffy_data 
 #define __read_mostly
 #define __noreturn
 
@@ -438,7 +488,7 @@ struct task_struct {
 struct task_struct __thread *current;
 
 /* CPU iterators based on CONFIG_HOTPLUG_CPU=n */
-#define smp_processor_id() 0
+#define smp_processor_id() get_cpu()
 #define for_each_possible_cpu(cpu) for ((cpu) = 0; (cpu) < nr_cpu_ids; (cpu)++)
 #define for_each_online_cpu(cpu) for_each_possible_cpu(cpu)
 #define for_each_cpu(cpu, cm) for_each_possible_cpu(cpu)
@@ -464,19 +514,6 @@ struct notifier_block {
 
 /* Warning statements which trigger assertions */
 int noassert;
-#ifdef ORDERING_BUG
-#define SET_NOASSERT() do { noassert = 1; } while (0)
-#define CK_NOASSERT() noassert
-#define BUG_ON(condition) assert(noassert || !(condition))
-#define BUILD_BUG_ON(condition) assert(noassert || !(condition))
-#define WARN_ON(condition) assert(noassert || !(condition))
-#define WARN_ONCE(condition, format...) assert(noassert || !(condition))
-#define WARN_ON_ONCE(condition)	 ({		\
-	int __ret_warn_on = !!(condition);	\
-	assert(noassert || !(condition));	\
-	__ret_warn_on;				\
-})
-#else
 #define SET_NOASSERT() do { noassert = 1; smp_mb(); } while (0)
 #define CK_NOASSERT() ({ smp_mb(); noassert; })
 #define BUG_ON(condition) assert(!(condition) || CK_NOASSERT())
@@ -488,7 +525,6 @@ int noassert;
 	assert(!(condition) || CK_NOASSERT());	\
 	__ret_warn_on;				\
 })
-#endif
 
 #define panic(msg) { perror(msg); assert(0); }
 #define IS_ERR(x) 0
@@ -528,7 +564,8 @@ int noassert;
 #define prefetch(next) do { } while (0)
 
 /* More CPU-relevant definitions, CONFIG_HOTPLUG_CPU=n  */
-#define jiffies 0
+unsigned long volatile __jiffy_data jiffies;
+
 #define cpu_is_offline(cpu) 0
 #define cpu_is_online(cpu) 1
 #define cpu_online(cpu) 1
@@ -552,10 +589,8 @@ int noassert;
 /* Declarations to emulate CPU, interrupts, and scheduling.  */
 void __VERIFIER_assume(int);
 
-extern int GP_KTHREAD_CPU;
-
 int get_cpu(void);
-void set_cpu(void *);
+void set_cpu(int);
 
 int cond_resched(void);	
 void fake_acquire_cpu(int);

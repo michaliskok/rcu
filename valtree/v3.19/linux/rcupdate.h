@@ -246,6 +246,9 @@ static inline void __rcu_read_unlock(void)
 
 static inline void synchronize_rcu(void)
 {
+#ifdef FORCE_FAILURE_1
+	return;
+#endif
 	synchronize_sched();
 }
 
