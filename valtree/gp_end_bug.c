@@ -9,6 +9,9 @@
  * (v.2.6.32), and was caused by unsynchronized accesses to the
  * ->completed field of the rcu_state struct.
  *
+ * If -DKERNEL_VERSION_3 is defined, this test can also be run
+ * in the emulated environment of Linux kernel v3.0.
+ *
  * This test demonstrates how this bug may cause callbacks whose grace
  * period has not ended to be called prematurely. That can cause
  * trouble if there were pre-existing readers when a callback
@@ -150,6 +153,10 @@ int main()
 
 	/* Initialize RCU related data structures */
 	rcu_init();
+	/* For v3.0, suppose that the scheduler initialization has completed */
+#ifdef KERNEL_VERSION_3
+	rcu_scheduler_fully_active = 1;
+#endif
 	for (int i = 0; i < NR_CPUS; i++) {
 		set_cpu(i);
 		rcu_enter_nohz(); 	/* All CPUs start out idle */
@@ -163,6 +170,9 @@ int main()
 	set_cpu(cpu0); 
 	fake_acquire_cpu(get_cpu());
 	call_rcu(&cb1, dummy);
+#ifdef KERNEL_VERSION_3	
+	do_IRQ(); /* In v3.0 call_rcu() does not always start a grace period */
+#endif 
 	cond_resched();
 	do_IRQ();	
 	fake_release_cpu(get_cpu());

@@ -1,6 +1,12 @@
 /*
  * Test for the Publish-Subscribe RCU guarantee.
  *
+ * This test examines if the rcu_assign_pointer() primitive is necessary
+ * for an updater using a simple publish-subscribe example, and the
+ * effects that the underlying memory model has on the outcome of the
+ * test.
+ * Currently configured for kernel v3.19, x86 and powerpc (-DPOWERPC).
+ *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
