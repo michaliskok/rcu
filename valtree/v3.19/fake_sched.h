@@ -25,14 +25,6 @@
 #include "fake_defs.h"
 #endif
 
-/*
- * The gp_kthread which runs in an early initcall, runs on an 
- * available CPU. The GP_KTHREAD_CPU variable defines the CPU on
- * which the gp_kthread will run. Running the thread on a different
- * CPU will result to unwanted behaviour.
- */
-int GP_KTHREAD_CPU = 0;
-
 /* 
  * Each thread has to run on a specific CPU. In order to achieve this,
  * we have a thread-local variable __running_cpu, which must be set

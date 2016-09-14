@@ -529,7 +529,12 @@ int noassert;
 #define panic(msg) { perror(msg); assert(0); }
 #define IS_ERR(x) 0
 
-/* Atomic operations based on cheater definitions and gcc built-ins (x86_32) */
+/* 
+ * Atomic operations based on cheater definitions and gcc language extensions.
+ * These language extensions are also supported by the clang compiler.
+ * Note that these operations are supported under SC, TSO and PSO in Nidhugg, 
+ * but only for the model __ATOMIC_SEQ_CST, even if otherwise specified.
+ */
 #define atomic_add(i, v) __atomic_add_fetch(&(v)->counter, i, __ATOMIC_RELAXED)
 #define atomic_add_return(i, v) atomic_add(i, v)
 #define atomic_sub(i, v) __atomic_sub_fetch(&(v)->counter, i, __ATOMIC_RELAXED)

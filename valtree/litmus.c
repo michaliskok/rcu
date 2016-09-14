@@ -1,6 +1,9 @@
 /*
  * Litmus test for correct RCU operation.
  *
+ * By default, the RCU grace-period kthread for RCU_bh is disabled for
+ * faster results. If desired, it can be enabled with -DENABLE_RCU_BH.
+ *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -61,7 +64,7 @@ void *thread_reader(void *arg)
 	r_y = y; 
 	rcu_read_unlock();
 #if !defined(FORCE_FAILURE) && !defined(FORCE_FAILURE_3) &&	\
-    !defined(FORCE_FAILURE_4) && !defined(FF_73)
+    !defined(FORCE_FAILURE_4)
 	cond_resched();
 	do_IRQ();
 #endif
@@ -90,7 +93,7 @@ void *run_gp_kthread(void *arg)
 {
 	struct rcu_state *rsp = arg;
 
-	set_cpu(GP_KTHREAD_CPU);
+	set_cpu(cpu0);
 	current = rsp->gp_kthread; /* rcu_gp_kthread must not wake itself */
 	
 	fake_acquire_cpu(get_cpu());
@@ -111,7 +114,7 @@ int main()
 		rcu_idle_enter();
 	}
 	
-        rcu_spawn_gp_kthread(); /* rcu_spawn_gp_kthread changed @ tree.c */
+        rcu_spawn_gp_kthread();
         if (pthread_create(&tu, NULL, thread_update, NULL))
 		abort();
 	(void)thread_reader(NULL);

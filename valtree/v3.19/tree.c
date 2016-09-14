@@ -3559,14 +3559,22 @@ static int __init rcu_spawn_gp_kthread(void)
 	struct task_struct *t;
 
 	rcu_scheduler_fully_active = 1;
-	/*for_each_rcu_flavor(rsp) {
+#ifdef ENABLE_RCU_BH
+	for_each_rcu_flavor(rsp) {
 		t = kthread_run(rcu_gp_kthread, rsp, "%s", rsp->name);
 		BUG_ON(IS_ERR(t));
 		rnp = rcu_get_root(rsp);
 		raw_spin_lock_irqsave(&rnp->lock, flags);
 		rsp->gp_kthread = t;
 		raw_spin_unlock_irqrestore(&rnp->lock, flags);
-		}*/t = kthread_run(rcu_gp_kthread, &rcu_sched_state, "%s",rcu_sched_state.name); rnp = rcu_get_root(&rcu_sched_state); raw_spin_lock_irqsave(&rnp->lock, flags); rcu_sched_state.gp_kthread = t; raw_spin_unlock_irqrestore(&rnp->lock, flags);
+	}
+#else
+	t = kthread_run(rcu_gp_kthread, &rcu_sched_state, "%s",rcu_sched_state.name);
+	rnp = rcu_get_root(&rcu_sched_state);
+	raw_spin_lock_irqsave(&rnp->lock, flags);
+	rcu_sched_state.gp_kthread = t;
+	raw_spin_unlock_irqrestore(&rnp->lock, flags);
+#endif
 	rcu_spawn_nocb_kthreads();
 	rcu_spawn_boost_kthreads();
 	return 0;
