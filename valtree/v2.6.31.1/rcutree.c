@@ -526,7 +526,7 @@ static void check_cpu_stall(struct rcu_state *rsp, struct rcu_data *rdp)
  * that someone else started the grace period.
  */
 static void note_new_gpnum(struct rcu_state *rsp, struct rcu_data *rdp)
-{//BUG_ON(rdp->completed != rsp->completed);
+{
 	rdp->qs_pending = 1;
 	rdp->passed_quiesc = 0;
 	rdp->gpnum = rsp->gpnum;
@@ -660,7 +660,7 @@ rcu_process_gp_end(struct rcu_state *rsp, struct rcu_data *rdp)
 	completed_snap = ACCESS_ONCE(rsp->completed);  /* outside of lock. */
 
 	/* Did another grace period end? */
-	if (rdp->completed != completed_snap) { //BUG_ON(rsp->completed != completed_snap);
+	if (rdp->completed != completed_snap) { 
 
 		/* Advance callbacks.  No harm if list empty. */
 		rdp->nxttail[RCU_DONE_TAIL] = rdp->nxttail[RCU_WAIT_TAIL];

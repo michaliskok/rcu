@@ -11,7 +11,7 @@
  * grace period ends and record the dynticks_completed value after a
  * new grace period has started. There are two "if-statements" that
  * prevent this scenario from happening. In order to prove this, proper
- * assertions at force_quiescent_state() are inserted when FQS_NO_BUG
+ * assertions at force_quiescent_state() are inserted when -DFQS_NO_BUG
  * is defined.
  *
  * This program is free software; you can redistribute it and/or modify
