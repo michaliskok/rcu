@@ -4,16 +4,20 @@
  * The bug was present in RCU versions prior to commit 83f5b01ffbba, 
  * which fixes a long-grace-period race between grace period forcing 
  * and grace period initialization.
+ *
  * Our test, however, shows that no such bug or race exists, and that
  * the scenario outlined in the commit log is impossible to happen.
  * More specifically, it is impossible to enter the RCU_SAVE_DYNTICK
  * leg of the switch statement in force_quiescent_state() before a 
  * grace period ends and record the dynticks_completed value after a
  * new grace period has started. There are two "if-statements" that
- * prevent this scenario from happening. In order to prove this, proper
- * assertions at force_quiescent_state() are inserted when -DFQS_NO_BUG
- * is defined.
+ * prevent this scenario from happening. 
  *
+ * In order to prove this, proper assertions at force_quiescent_state() 
+ * are inserted when -DFQS_NO_BUG is defined. This alleged bug requires 
+ * at least three CPUs (-DCONFIG_NR_CPUS=3), and a multi-level RCU 
+ * architecture (-DCONFIG_RCU_FANOUT=2).
+ * 
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or

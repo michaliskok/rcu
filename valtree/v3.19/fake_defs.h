@@ -331,9 +331,7 @@ static inline void list_add(struct list_head *new, struct list_head *head)
 
 /* "Cheater" definitions based on restricted Kconfig choices. */
 
-#ifdef FORCE_FAILURE_8
-# define CONFIG_NR_CPUS 32
-#else
+#ifndef CONFIG_NR_CPUS
 # define CONFIG_NR_CPUS 2
 #endif
 
@@ -343,8 +341,15 @@ static inline void list_add(struct list_head *new, struct list_head *head)
 
 #define CONFIG_TREE_RCU
 #define CONFIG_SMP
-#define CONFIG_RCU_FANOUT 32
-#define CONFIG_RCU_FANOUT_LEAF 16
+
+#ifndef CONFIG_RCU_FANOUT
+# define CONFIG_RCU_FANOUT 32
+#endif
+
+#ifndef CONFIG_RCU_FANOUT_LEAF
+# define CONFIG_RCU_FANOUT_LEAF 16
+#endif
+
 #define CONFIG_RCU_STALL_COMMON
 #define CONFIG_RCU_CPU_STALL_TIMEOUT 21
 

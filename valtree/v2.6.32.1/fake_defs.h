@@ -279,7 +279,10 @@ static inline void list_add(struct list_head *new, struct list_head *head)
 /* "Cheater" definitions based on restricted Kconfig choices. */
 
 
-#define CONFIG_NR_CPUS 2
+#ifndef CONFIG_NR_CPUS
+# define CONFIG_NR_CPUS 2
+#endif
+
 #define NR_CPUS CONFIG_NR_CPUS
 #define nr_cpu_ids NR_CPUS
 #define HZ 100
@@ -288,9 +291,7 @@ static inline void list_add(struct list_head *new, struct list_head *head)
 #define CONFIG_NO_HZ
 #define CONFIG_SMP
 
-#ifdef MULTI_LEVEL
-# define CONFIG_RCU_FANOUT 1
-#else
+#ifndef CONFIG_RCU_FANOUT
 # define CONFIG_RCU_FANOUT 32
 #endif
 

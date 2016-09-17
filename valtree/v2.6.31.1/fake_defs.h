@@ -307,8 +307,10 @@ struct ratelimit_state {
 
 /* "Cheater" definitions based on restricted Kconfig choices. */
 
+#ifndef CONFIG_NR_CPUS
+# define CONFIG_NR_CPUS 2
+#endif
 
-#define CONFIG_NR_CPUS 3
 #define NR_CPUS CONFIG_NR_CPUS
 #define nr_cpu_ids NR_CPUS
 #define HZ 100
@@ -317,9 +319,7 @@ struct ratelimit_state {
 #define CONFIG_NO_HZ
 #define CONFIG_SMP
 
-#ifdef MULTI_LEVEL
-# define CONFIG_RCU_FANOUT 2
-#else
+#ifndef CONFIG_RCU_FANOUT
 # define CONFIG_RCU_FANOUT 32
 #endif
 

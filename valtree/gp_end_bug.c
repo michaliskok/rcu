@@ -2,8 +2,8 @@
  * This test exposes a bug in Linux kernel in v2.6.31.1 and v2.6.32.1.
  * It is designed to run on both the emulated environments of 
  * kernel v2.6.31.1 and v2.6.32.1.
- * The bug is present in both multi-level hierarchies (-DMULTI_LEVEL) 
- * and single-node hierarchies.
+ * The bug is present in both multi-level hierarchies (can be constructed
+ * by definining -DCONFIG_RCU_FANOUT=x), and single-node hierarchies.
  *
  * The bug was present in RCU versions prior to commit d09b62dfa336
  * (v.2.6.32), and was caused by unsynchronized accesses to the
@@ -50,15 +50,6 @@ void kfree(const void *p)
 
 int cpu0 = 0;
 int cpu1 = 1;
-
-/* 
- * In the emulated environment of v2.6.31 NR_CPUS == 3.
- * This admittedly peculiar architecture is chosen in order for an
- * alleged bug in this version to be exposed (see init_bug.c).
- */
-#if NR_CPUS == 3
-int cpu2 = 2;
-#endif
 
 /* Code under test */
 
@@ -177,15 +168,6 @@ int main()
 	do_IRQ();	
 	fake_release_cpu(get_cpu());
 
-#if NR_CPUS == 3
-	set_cpu(cpu2);
-	fake_acquire_cpu(get_cpu());
-	do_IRQ();
-	cond_resched();
-	do_IRQ();
-	fake_release_cpu(get_cpu());
-#endif
-    
 	if (pthread_create(&tu, NULL, thread_update, NULL))
 		abort();
 	if (pthread_create(&th, NULL, thread_helper, NULL))
