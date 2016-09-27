@@ -133,19 +133,12 @@ enum {
 
 #define smp_mb() __sync_synchronize()
 int noassert;
-#ifdef ORDERING_BUG
-#define SET_NOASSERT() do { noassert = 1; } while (0)
-#define CK_NOASSERT() noassert
-#define WARN_ON(condition) assert(noassert || !(condition))
-#define WARN_ONCE(condition, format...) assert(noassert || !(condition))
-#define WARN_ON_ONCE(condition)	assert(noassert || !(condition))
-#else
 #define SET_NOASSERT() do { noassert = 1; smp_mb(); } while (0)
 #define CK_NOASSERT() ({ smp_mb(); noassert; })
+#define BUG_ON(condition) assert(!(condition) || CK_NOASSERT())
 #define WARN_ON(condition) assert(!(condition) || CK_NOASSERT())
 #define WARN_ONCE(condition, format...) assert(!(condition) || CK_NOASSERT())
 #define WARN_ON_ONCE(condition)	assert(!(condition) || CK_NOASSERT())
-#endif
 
 #define smp_processor_id()	0
 

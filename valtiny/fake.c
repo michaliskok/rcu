@@ -100,19 +100,19 @@ void local_irq_restore(unsigned long flags)
 int x;
 int y;
 
-int __unbuffered_tpr_x;
-int __unbuffered_tpr_y;
+int r_x;
+int r_y;
 
 void rcu_reader(void)
 {
 	rcu_read_lock();
-	__unbuffered_tpr_x = x;
+        r_x = x;
 #ifdef FORCE_FAILURE
 	rcu_read_unlock();
 	cond_resched();
 	rcu_read_lock();
 #endif
-	__unbuffered_tpr_y = y;
+	r_y = y;
 	rcu_read_unlock();
 }
 
@@ -152,8 +152,8 @@ int main(int argc, char *argv[])
 		abort();
 	if (pthread_join(tpr, NULL))
 		abort();
-	assert(__unbuffered_tpr_y == 0 || __unbuffered_tpr_x == 1 ||
-	       CK_NOASSERT());
+	
+	BUG_ON(r_x == 0 && r_y == 1);
 
 	return 0;
 }
