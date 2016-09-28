@@ -103,19 +103,6 @@ int y;
 int r_x;
 int r_y;
 
-void rcu_reader(void)
-{
-	rcu_read_lock();
-        r_x = x;
-#ifdef FORCE_FAILURE
-	rcu_read_unlock();
-	cond_resched();
-	rcu_read_lock();
-#endif
-	r_y = y;
-	rcu_read_unlock();
-}
-
 void *thread_update(void *arg)
 {
 	fake_acquire_cpu();
@@ -127,11 +114,19 @@ void *thread_update(void *arg)
 	fake_release_cpu();
 }
 
-void *thread_process_reader(void *arg)
+void *thread_reader(void *arg)
 {
 	fake_acquire_cpu();
 
-	rcu_reader();
+	rcu_read_lock();
+        r_x = x;
+#ifdef FORCE_FAILURE
+	rcu_read_unlock();
+	cond_resched();
+	rcu_read_lock();
+#endif
+	r_y = y;
+	rcu_read_unlock();
 
 	fake_release_cpu();
 }
@@ -141,16 +136,16 @@ void *thread_process_reader(void *arg)
 int main(int argc, char *argv[])
 {
 	pthread_t tu;
-	pthread_t tpr;
+	pthread_t tr;
 
 	rcu_idle_enter();
 	if (pthread_create(&tu, NULL, thread_update, NULL))
 		abort();
-	if (pthread_create(&tpr, NULL, thread_process_reader, NULL))
+	if (pthread_create(&tr, NULL, thread_reader, NULL))
 		abort();
 	if (pthread_join(tu, NULL))
 		abort();
-	if (pthread_join(tpr, NULL))
+	if (pthread_join(tr, NULL))
 		abort();
 	
 	BUG_ON(r_x == 0 && r_y == 1);
