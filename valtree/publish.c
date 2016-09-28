@@ -44,7 +44,7 @@ bool add_gp(int x, int y)
 {
 	struct foo *p;
 
-	p = malloc(sizeof(*p));
+	p = calloc(1, sizeof(*p));
 	if (!p)
 		return -ENOMEM;
 	spin_lock(&gp_lock);
@@ -70,7 +70,7 @@ bool use_gp(void)
 	rcu_read_lock();
 	p = rcu_dereference(gp);
 	if (p) {
-		BUG_ON(p->a != 42 && p->b != 42);
+		BUG_ON(p->a != 42 || p->b != 42);
 		/* do something with p->a, p->b */
 		rcu_read_unlock();
 		return true;
