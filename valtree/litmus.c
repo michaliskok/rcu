@@ -53,18 +53,18 @@ void *thread_reader(void *arg)
 	rcu_read_lock();	
         r_x = x; 
 	do_IRQ();
-#ifdef FORCE_FAILURE_3
+#ifdef FORCE_FAILURE_4
 	rcu_idle_enter();
 	rcu_idle_exit();
 #endif
-#ifdef FORCE_FAILURE
+#ifdef FORCE_FAILURE_1
 	cond_resched();
 	do_IRQ();
 #endif
 	r_y = y; 
 	rcu_read_unlock();
-#if !defined(FORCE_FAILURE) && !defined(FORCE_FAILURE_3) &&	\
-    !defined(FORCE_FAILURE_4)
+#if !defined(FORCE_FAILURE_1) && !defined(FORCE_FAILURE_4) &&	\
+    !defined(FORCE_FAILURE_5)
 	cond_resched();
 	do_IRQ();
 #endif
@@ -80,7 +80,7 @@ void *thread_update(void *arg)
 
 	x = 1;
 	synchronize_rcu();
-#ifdef ASSERT_FAILURE
+#ifdef ASSERT_0
 	assert(0);
 #endif
 	y = 1;

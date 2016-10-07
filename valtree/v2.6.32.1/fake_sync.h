@@ -219,20 +219,6 @@ void mutex_unlock(struct mutex *l)
 	fake_acquire_cpu(get_cpu());		\
 }) 
 
-#ifdef FORCE_FAILURE_3
-#define wait_event_interruptible_timeout(w, condition, timeout)		\
-({								        \
-	do_IRQ();							\
-	cond_resched();							\
-	rcu_gp_fqs(&rcu_sched_state, RCU_SAVE_DYNTICK);			\
-	do_IRQ();							\
-	fake_release_cpu(get_cpu());					\
-	while (!(condition))						\
-		;							\
-	fake_acquire_cpu(get_cpu());					\
-	true;								\
-})
-#else
 #define wait_event_interruptible_timeout(w, condition, timeout)		\
 ({								        \
 	do_IRQ();							\
@@ -244,7 +230,6 @@ void mutex_unlock(struct mutex *l)
 	fake_acquire_cpu(get_cpu());					\
 	true;								\
 })
-#endif
 
 
 /* 

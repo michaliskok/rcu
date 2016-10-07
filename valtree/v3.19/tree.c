@@ -186,7 +186,7 @@ static int rcu_gp_in_progress(struct rcu_state *rsp)
  */
 void rcu_sched_qs(void)
 {
-#ifdef FORCE_FAILURE_6
+#ifdef LIVENESS_CHECK_2
 	return;
 #endif
 	if (!rcu_sched_data[get_cpu()].passed_quiesce) {
@@ -1557,12 +1557,12 @@ static bool __note_gp_changes(struct rcu_state *rsp, struct rcu_node *rnp,
 		rdp->gpnum = rnp->gpnum;
 		trace_rcu_grace_period(rsp->name, rdp->gpnum, TPS("cpustart"));
 		rdp->passed_quiesce = 0;
-#ifdef FORCE_FAILURE_5
+#ifdef LIVENESS_CHECK_1
 		rdp->qs_pending = 0;
 #else
 		rdp->qs_pending = !!(rnp->qsmask & rdp->grpmask);
 #endif
-#ifdef FORCE_FAILURE_4
+#ifdef FORCE_FAILURE_5
 		rnp->qsmask &= ~rdp->grpmask;
 #endif
 		zero_cpu_stall_ticks(rdp);
@@ -1647,7 +1647,7 @@ static int rcu_gp_init(struct rcu_state *rsp)
 		smp_mb__after_unlock_lock();
 		rdp = &rsp->rda[get_cpu()];
 		rcu_preempt_check_blocked_tasks(rnp);
-#ifdef FORCE_FAILURE_2
+#ifdef FORCE_FAILURE_3
 		rnp->qsmask &= ~rdp->grpmask;
 #else
 		rnp->qsmask = rnp->qsmaskinit;
@@ -1962,7 +1962,7 @@ rcu_report_qs_rnp(unsigned long mask, struct rcu_state *rsp,
 {
 	struct rcu_node *rnp_c;
 
-#ifdef FORCE_FAILURE_7
+#ifdef LIVENESS_CHECK_3
 	return;
 #endif
 	/* Walk up the rcu_node hierarchy. */
@@ -1978,7 +1978,7 @@ rcu_report_qs_rnp(unsigned long mask, struct rcu_state *rsp,
 						 mask, rnp->qsmask, rnp->level,
 						 rnp->grplo, rnp->grphi,
 						 !!rnp->gp_tasks);
-#ifndef FORCE_FAILURE_8
+#ifndef FORCE_FAILURE_6
 		if (rnp->qsmask != 0 || rcu_preempt_blocked_readers_cgp(rnp)) {
 
 			/* Other bits still set at this level, so done. */

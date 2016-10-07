@@ -199,7 +199,7 @@ void mutex_unlock(struct mutex *l)
 	fake_acquire_cpu(get_cpu());		\
 }) 
 
-#ifdef FORCE_FAILURE_3
+#ifdef FORCE_FAILURE_4
 #define wait_event_interruptible_timeout(w, condition, timeout)		\
 ({								        \
 	rcu_gp_fqs(&rcu_sched_state, RCU_SAVE_DYNTICK);			\
