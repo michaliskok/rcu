@@ -159,7 +159,7 @@ static int rcu_gp_in_progress(struct rcu_state *rsp)
  */
 void rcu_sched_qs(int cpu)
 {
-#ifdef FORCE_FAILURE_6
+#ifdef LIVENESS_CHECK_2
 	return;
 #endif
 	struct rcu_data *rdp = &rcu_sched_data[cpu];
@@ -682,7 +682,7 @@ static void __note_new_gpnum(struct rcu_state *rsp, struct rcu_node *rnp, struct
 		 */
 		rdp->gpnum = rnp->gpnum;
 		if (rnp->qsmask & rdp->grpmask) {
-#ifdef FORCE_FAILURE_5
+#ifdef LIVENESS_CHECK_1
 			rdp->qs_pending = 0;
 #else
 			rdp->qs_pending = 1;
@@ -690,6 +690,9 @@ static void __note_new_gpnum(struct rcu_state *rsp, struct rcu_node *rnp, struct
 			rdp->passed_quiesc = 0;
 		} else
 			rdp->qs_pending = 0;
+#ifdef FORCE_FAILURE_5
+		rnp->qsmask &= ~rdp->grpmask;
+#endif
 	}
 }
 
@@ -866,7 +869,11 @@ rcu_start_gp(struct rcu_state *rsp, unsigned long flags)
 	/* Special-case the common single-level case. */
 	if (NUM_RCU_NODES == 1) {
 		rcu_preempt_check_blocked_tasks(rnp);
+#ifdef FORCE_FAILURE_3
+		rnp->qsmask = 0;
+#else
 		rnp->qsmask = rnp->qsmaskinit;
+#endif
 		rnp->gpnum = rsp->gpnum;
 		rnp->completed = rsp->completed;
 		rsp->signaled = RCU_SIGNAL_INIT; /* force_quiescent_state OK. */
@@ -902,7 +909,11 @@ rcu_start_gp(struct rcu_state *rsp, unsigned long flags)
 	rcu_for_each_node_breadth_first(rsp, rnp) {
 		raw_spin_lock(&rnp->lock);	/* irqs already disabled. */
 		rcu_preempt_check_blocked_tasks(rnp);
+#ifdef FORCE_FAILURE_3
+		rnp->qsmask = 0;
+#else
 		rnp->qsmask = rnp->qsmaskinit;
+#endif
 		rnp->gpnum = rsp->gpnum;
 		rnp->completed = rsp->completed;
 		if (rnp == rdp->mynode)
@@ -958,6 +969,9 @@ rcu_report_qs_rnp(unsigned long mask, struct rcu_state *rsp,
 		  struct rcu_node *rnp, unsigned long flags)
 	__releases(rnp->lock)
 {
+#ifdef LIVENESS_CHECK_3
+	return;
+#endif
 	struct rcu_node *rnp_c;
 
 	/* Walk up the rcu_node hierarchy. */
@@ -969,12 +983,14 @@ rcu_report_qs_rnp(unsigned long mask, struct rcu_state *rsp,
 			return;
 		}
 		rnp->qsmask &= ~mask;
+#ifndef FORCE_FAILURE_6
 		if (rnp->qsmask != 0 || rcu_preempt_blocked_readers_cgp(rnp)) {
 
 			/* Other bits still set at this level, so done. */
 			raw_spin_unlock_irqrestore(&rnp->lock, flags);
 			return;
 		}
+#endif
 		mask = rnp->grpmask;
 		if (rnp->parent == NULL) {
 

@@ -1648,7 +1648,7 @@ static int rcu_gp_init(struct rcu_state *rsp)
 		rdp = &rsp->rda[get_cpu()];
 		rcu_preempt_check_blocked_tasks(rnp);
 #ifdef FORCE_FAILURE_3
-		rnp->qsmask &= ~rdp->grpmask;
+		rnp->qsmask = 0;
 #else
 		rnp->qsmask = rnp->qsmaskinit;
 #endif
