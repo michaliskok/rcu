@@ -5,18 +5,18 @@ Validation of Tree RCU
 This repository aims at validating the non-preemptible version of
 Linux kernel's Tree RCU using [Nidhugg](https://github.com/nidhugg/nidhugg).
 
-* [Licence](#Licence)
-* [RCU Requirements](#RCU requirements)
-* [Tree RCU](#Tree RCU)
-* [Usage](#Usage)
+* [Licence](#licence)
+* [RCU Requirements](#requirements)
+* [Tree RCU](#tree)
+* [Usage](#usage)
 
-Licence
+Licence <a name="licence"></a>
 -------
 
 The code at this repository is distributed under the GPL, version 2 or (at your option) later.
 Please see the COPYING file for details.
 
-RCU Requirements
+RCU Requirements <a name="requirements"></a>
 ----------------
 
 Every RCU implementation has to adhere to the following rule (Grace-Period guarantee):
@@ -34,7 +34,7 @@ the work done from RCU won't be undone from the compiler or the CPU).
 The fundamental RCU requirements can be found
 [here](https://www.kernel.org/doc/Documentation/RCU/Design/Requirements/).
 
-Tree RCU
+Tree RCU <a name="tree"></a>
 --------
 
 The problem with Classic RCU was that it suffered from increasing lock
@@ -80,6 +80,11 @@ others. These are located in the files: `fake_defs.h`, `fake_sched.h` and `fake_
 the `-DCONFIG_NR_CPUS=x` preprocessor option.
 4. All CPUs start out idle.
 
+Usage <a name="usage"></a>
+-----
+
+To run all the default tests, simply run the file `driver.sh`.
+
 ### Tests explanation
 
 Below an explanation for each test is presented, along with some of the Linux-kernel
@@ -94,9 +99,4 @@ For more information, please look at the test files themselves.
 | `gp_end_bug.c` | Exposes known bug                |  2.6.3[12].1, 3.0  | Commit d09b62dfa336 |
 | `init_bug.c`   | Deals with alleged bug           |  2.6.3[12].1       | Commit 83f5b01ffbba |
 | `publish.c`    | Publish-Subscribe guarantee test |     3.19+          | Publisher's side    |
-
-Usage
------
-
-To run all the default tests, simply run the file `driver.sh`.
 
