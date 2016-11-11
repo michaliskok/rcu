@@ -10,14 +10,14 @@ Linux kernel's Tree RCU using [Nidhugg](https://github.com/nidhugg/nidhugg).
 * [Tree RCU](#tree)
 * [Usage](#usage)
 
-Licence <a name="licence"></a>
--------
+<a name="licence">Licence</a>
+-----------------------------
 
 The code at this repository is distributed under the GPL, version 2 or (at your option) later.
 Please see the COPYING file for details.
 
-RCU Requirements <a name="requirements"></a>
-----------------
+<a name="requirements">RCU Requirements</a>
+-------------------------------------------
 
 Every RCU implementation has to adhere to the following rule (Grace-Period guarantee):
 
@@ -34,8 +34,8 @@ the work done from RCU won't be undone from the compiler or the CPU).
 The fundamental RCU requirements can be found
 [here](https://www.kernel.org/doc/Documentation/RCU/Design/Requirements/).
 
-Tree RCU <a name="tree"></a>
---------
+<a name="tree">Tree RCU</a>
+---------------------------
 
 The problem with Classic RCU was that it suffered from increasing lock
 contention due to the presence of one global lock that had to be acquired from
@@ -80,8 +80,8 @@ others. These are located in the files: `fake_defs.h`, `fake_sched.h` and `fake_
 the `-DCONFIG_NR_CPUS=x` preprocessor option.
 4. All CPUs start out idle.
 
-Usage <a name="usage"></a>
------
+<a name="usage">Usage</a>
+-------------------------
 
 To run all the default tests, simply run the file `driver.sh`.
 

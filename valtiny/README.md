@@ -6,18 +6,18 @@ This repository aims at validating Tiny RCU's Linux kernel code (v.3.19) using
 [Nidhugg](https://github.com/nidhugg/nidhugg).
 
 * [Licence](#licence)
-* [RCU Requirements](#RCU requirements)
-* [Tiny RCU](#Tiny RCU)
-* [Usage](#Usage)
+* [RCU Requirements](#requirements)
+* [Tiny RCU](#tiny)
+* [Usage](#usage)
 
-Licence
--------
+<a name="licence">Licence</a>
+-----------------------------
 
 The code at this repository is distributed under the GPL, version 2 or (at your option) later.
 Please see the COPYING file for details.
 
-RCU Requirements
-----------------
+<a name="requirements">RCU Requirements</a>
+-------------------------------------------
 
 Every RCU implementation has to adhere to the following rule:
 
@@ -30,8 +30,8 @@ RCU read-side critical section in progress at the beginning of a grace period ha
 completely before that grace period ends (along with sufficient memory barriers to ensure that
 the work done from RCU won't be undone from the compiler or the CPU).
 
-Tiny RCU
---------
+<a name="tiny>Tiny RCU</a>
+--------------------------
 
 The key feature that distincts Tiny RCU from all other RCU implementations is that it is designed
 to run on a single CPU. *This means that any given time the sole CPU passes through a quiescent state,
@@ -76,8 +76,8 @@ the thread that is currently running on the CPU, holds that lock as well.
 re-acquire it.
 4. The sole CPU starts out idle.
 
-Usage
------
+<a name="usage">Usage</a>
+-------------------------
 
 To run under TSO:
 
