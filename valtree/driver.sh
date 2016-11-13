@@ -90,34 +90,43 @@ runsuccess v3.19 --power publish.c -DPOWERPC
 runfailure v3.19 --power publish.c -DPOWERPC -DORDERING_BUG
 
 # Grace-Period guarantee -- RCU tree litmus test
-runsuccess v3.19 --sc litmus.c
-runfailure v3.19 --sc litmus.c -DASSERT_0
-runfailure v3.19 --sc litmus.c -DFORCE_FAILURE_1
-runfailure v3.19 --sc litmus.c -DFORCE_FAILURE_2
-runfailure v3.19 --sc litmus.c -DFORCE_FAILURE_3
-runfailure v3.19 --sc litmus.c -DFORCE_FAILURE_4
-runfailure v3.19 --sc litmus.c -DFORCE_FAILURE_5
-unroll=19
-runfailure v3.19 --sc litmus.c -DFORCE_FAILURE_6
-unroll=5
-runsuccess v3.19 --sc litmus.c -DLIVENESS_CHECK_1 -DASSERT_0
-runsuccess v3.19 --sc litmus.c -DLIVENESS_CHECK_2 -DASSERT_0
-runsuccess v3.19 --sc litmus.c -DLIVENESS_CHECK_3 -DASSERT_0
-
-# TSO
-runsuccess v3.19 --tso litmus.c
-runfailure v3.19 --tso litmus.c -DASSERT_0
-runfailure v3.19 --tso litmus.c -DFORCE_FAILURE_1
-runfailure v3.19 --tso litmus.c -DFORCE_FAILURE_2
-runfailure v3.19 --tso litmus.c -DFORCE_FAILURE_3
-runfailure v3.19 --tso litmus.c -DFORCE_FAILURE_4
-runfailure v3.19 --tso litmus.c -DFORCE_FAILURE_5
-unroll=19
-runfailure v3.19 --tso litmus.c -DFORCE_FAILURE_6
-unroll=5
-runsuccess v3.19 --tso litmus.c -DLIVENESS_CHECK_1 -DASSERT_0
-runsuccess v3.19 --tso litmus.c -DLIVENESS_CHECK_2 -DASSERT_0
-runsuccess v3.19 --tso litmus.c -DLIVENESS_CHECK_3 -DASSERT_0
+# Linux kernel v3.0
+for mm in sc tso
+do
+    runsuccess v3.0 --${mm} litmus_v3.c
+    runfailure v3.0 --${mm} litmus_v3.c -DASSERT_0
+    runfailure v3.0 --${mm} litmus_v3.c -DFORCE_FAILURE_1
+    runfailure v3.0 --${mm} litmus_v3.c -DFORCE_FAILURE_2
+    runfailure v3.0 --${mm} litmus_v3.c -DFORCE_FAILURE_3
+    runfailure v3.0 --${mm} litmus_v3.c -DFORCE_FAILURE_4
+    runfailure v3.0 --${mm} litmus_v3.c -DFORCE_FAILURE_5
+    unroll=19
+    runfailure v3.0 --${mm} litmus_v3.c -DFORCE_FAILURE_6
+    unroll=5
+    runsuccess v3.0 --${mm} litmus_v3.c -DLIVENESS_CHECK_1 -DASSERT_0
+    runsuccess v3.0 --${mm} litmus_v3.c -DLIVENESS_CHECK_2 -DASSERT_0
+    runsuccess v3.0 --${mm} litmus_v3.c -DLIVENESS_CHECK_3 -DASSERT_0
+done
+# Linux kernel v3.19, v4.3
+for version in v3.19 v4.3
+do
+    for mm in sc tso
+    do
+	runsuccess ${version} --${mm} litmus.c
+	runfailure ${version} --${mm} litmus.c -DASSERT_0
+	runfailure ${version} --${mm} litmus.c -DFORCE_FAILURE_1
+	runfailure ${version} --${mm} litmus.c -DFORCE_FAILURE_2
+	runfailure ${version} --${mm} litmus.c -DFORCE_FAILURE_3
+	runfailure ${version} --${mm} litmus.c -DFORCE_FAILURE_4
+	runfailure ${version} --${mm} litmus.c -DFORCE_FAILURE_5
+	unroll=19
+	runfailure ${version} --${mm} litmus.c -DFORCE_FAILURE_6
+	unroll=5
+	runsuccess ${version} --${mm} litmus.c -DLIVENESS_CHECK_1 -DASSERT_0
+	runsuccess ${version} --${mm} litmus.c -DLIVENESS_CHECK_2 -DASSERT_0
+	runsuccess ${version} --${mm} litmus.c -DLIVENESS_CHECK_3 -DASSERT_0
+    done
+done
 
 
 if test -n "$failure"
