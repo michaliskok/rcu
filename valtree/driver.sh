@@ -38,8 +38,9 @@ runfailure() {
     echo '--- Expecting verification failure'
     echo '--------------------------------------------------------------------'
     if nidhuggc -I ${kernel_version} -std=gnu99 $* -- ${mem_model} \
-	     --extfun-no-race=fprintf --print-progress-estimate \
-	     --disable-mutex-init-requirement --unroll=${unroll} ${test_file}
+		--extfun-no-race=fprintf --extfun-no-race=memcpy \
+		--print-progress-estimate --disable-mutex-init-requirement \
+		--unroll=${unroll} ${test_file}
     then
 	echo '^^^ Unexpected verification success'
 	failure=1
@@ -64,8 +65,9 @@ runsuccess() {
     echo '--- Expecting verification success'
     echo '--------------------------------------------------------------------'
     if nidhuggc -I ${kernel_version} -std=gnu99 $* -- ${mem_model} \
-	     --extfun-no-race=fprintf --print-progress-estimate \
-	     --disable-mutex-init-requirement --unroll=${unroll} ${test_file}
+		--extfun-no-race=fprintf --extfun-no-race=memcpy \
+		--print-progress-estimate --disable-mutex-init-requirement \
+		--unroll=${unroll} ${test_file}
     then
 	:
     else
