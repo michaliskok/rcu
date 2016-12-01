@@ -23,6 +23,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <pthread.h>
 #include <assert.h>
 
@@ -621,17 +622,19 @@ void do_IRQ(void);
 
 void *run_gp_kthread(void *);
 
-#define kthread_run(threadfn, data, namefmt, ...)			\
-	({								\
-		struct task_struct *gp_kthread;				\
-		pthread_t gp_kthread_t;					\
+#define kthread_run(threadfn, data, namefmt, name)			\
+({							   	        \
+        struct task_struct *gp_kthread = NULL;				\
+	pthread_t gp_kthread_t;						\
+        if (!strcmp(name, "rcu_sched") || IS_ENABLED(ENABLE_RCU_BH)) {  \
 		if (pthread_create(&gp_kthread_t, NULL, run_gp_kthread, data)) \
 			abort();					\
 		gp_kthread = malloc(sizeof(*gp_kthread));		\
 		gp_kthread->pid = (unsigned long) gp_kthread_t;		\
 		gp_kthread->tid = gp_kthread_t;				\
-		gp_kthread;						\
-	})
+	}								\
+	gp_kthread;							\
+})
 
 
 #endif /* __FAKE_DEFS_H */

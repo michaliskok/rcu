@@ -23,6 +23,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <pthread.h>
 #include <assert.h>
 
@@ -720,19 +721,21 @@ void do_IRQ(void);
 
 void *run_gp_kthread(void *);
 
-#define kthread_run(threadfn, data, namefmt, ...)			\
-	({								\
-		struct task_struct *gp_kthread;				\
-		pthread_t gp_kthread_t;					\
+#define kthread_run(threadfn, data, namefmt, name)			\
+({							   	        \
+        struct task_struct *gp_kthread = NULL;				\
+	pthread_t gp_kthread_t;						\
+        if (!strcmp(name, "rcu_sched") || IS_ENABLED(ENABLE_RCU_BH)) {  \
 		if (pthread_create(&gp_kthread_t, NULL, run_gp_kthread, data)) \
 			abort();					\
 		gp_kthread = malloc(sizeof(*gp_kthread));		\
 		gp_kthread->pid = (unsigned long) gp_kthread_t;		\
 		gp_kthread->tid = gp_kthread_t;				\
-		gp_kthread;						\
-	})
+	}								\
+	gp_kthread;							\
+})
 
-#define kthread_create(threadfn, data, namefmt, ...) kthread_run(threadfn, data, namefmt, ...)
+#define kthread_create(threadfn, data, namefmt, name) kthread_run(threadfn, data, namefmt, name)
 #define wake_up_process(t) do { } while (0)
 
 #define sched_setscheduler_nocheck(task, policy, param) do { } while (0)

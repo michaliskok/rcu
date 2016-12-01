@@ -4058,7 +4058,6 @@ static int __init rcu_spawn_gp_kthread(void)
 			 kthread_prio, kthread_prio_in);
 
 	rcu_scheduler_fully_active = 1;
-#ifdef ENABLE_RCU_BH
 	for_each_rcu_flavor(rsp) {
 		t = kthread_create(rcu_gp_kthread, rsp, "%s", rsp->name);
 		BUG_ON(IS_ERR(t));
@@ -4072,18 +4071,6 @@ static int __init rcu_spawn_gp_kthread(void)
 		wake_up_process(t);
 		raw_spin_unlock_irqrestore(&rnp->lock, flags);
 	}
-#else
-	t = kthread_create(rcu_gp_kthread, &rcu_sched_state, "%s", rcu_sched_state.name);
-	rnp = rcu_get_root(&rcu_sched_state);
-	raw_spin_lock_irqsave(&rnp->lock, flags);
-	rcu_sched_state.gp_kthread = t;
-	if (kthread_prio) {
-		sp.sched_priority = kthread_prio;
-		sched_setscheduler_nocheck(t, SCHED_FIFO, &sp);
-	}
-	wake_up_process(t);
-	raw_spin_unlock_irqrestore(&rnp->lock, flags);
-#endif
 	rcu_spawn_nocb_kthreads();
 	rcu_spawn_boost_kthreads();
 	return 0;
