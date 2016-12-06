@@ -486,6 +486,7 @@ struct lock_class_key { };
 #define pr_info(args...) fprintf(stderr, args)
 #define pr_err(args...) fprintf(stderr, args)
 #define pr_cont(args...) fprintf(stderr, args)
+
 #define ftrace_dump(x) do { } while (0)
 #define dump_cpu_task(x) do { } while (0)
 
@@ -585,7 +586,7 @@ struct task_struct __thread *current;
 	     (cpu) = cpumask_next((cpu), (mask)),			\
 	     (cpu) < nr_cpu_ids;)
 #define for_each_possible_cpu(cpu) for_each_cpu((cpu), cpu_possible_mask)
-#define for_each_online_cpu(cpu) for_each_possible_cpu(cpu)
+#define for_each_online_cpu(cpu) for_each_cpu(cpu, cpu_online_mask)
 
 /* Softirq definitions and data types */
 #define open_softirq(x, y) do { } while (0)
