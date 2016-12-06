@@ -108,7 +108,12 @@ int main()
 {
 	pthread_t tu;
 
+	/* Initialize cpu_possible_mask, cpu_online_mask */
+	set_online_cpus();
+	set_possible_cpus();
+	/* RCU initializations */
 	rcu_init();
+	/* All CPUs start out idle */
 	for (int i = 0; i < NR_CPUS; i++) {
 		set_cpu(i);
 		rcu_idle_enter();
