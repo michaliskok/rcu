@@ -438,13 +438,16 @@ struct lock_class_key { };
 #define per_cpu(var, cpu) ((var)[cpu])
 #define per_cpu_ptr(var, cpu) (&(var)[cpu])
 
-#define raw_cpu_ptr(var, cpu) per_cpu_ptr(var, cpu)
-#define raw_cpu_read(var) ((var)[get_cpu()])
+#define raw_cpu_ptr(var) per_cpu_ptr(var, get_cpu())
+#define raw_cpu_read(var) per_cpu(var, get_cpu())
 #define raw_cpu_write(var, val) (var)[get_cpu()] = (val)
 
-#define this_cpu_ptr(var) (&(var)[get_cpu()])
+#define this_cpu_ptr(var) raw_cpu_ptr(var)
 #define __this_cpu_read(var) raw_cpu_read(var)
 #define __this_cpu_write(var, val) raw_cpu_write(var, val)
+
+#define this_cpu_inc(var) (var)[get_cpu()]++
+#define raw_cpu_inc(var) this_cpu_inc(var)
 
 /* Disable CONFIG_RCU_TRACE */
 #define tracepoint_string(x) ""
