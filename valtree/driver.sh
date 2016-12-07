@@ -99,9 +99,9 @@ do
     runfailure v3.0 ${mm} litmus_v3.c -DASSERT_0
     runfailure v3.0 ${mm} litmus_v3.c -DFORCE_FAILURE_1
     runfailure v3.0 ${mm} litmus_v3.c -DFORCE_FAILURE_2
-    runfailure v3.0 ${mm} litmus_v3.c -DFORCE_FAILURE_3
+    runsuccess v3.0 ${mm} litmus_v3.c -DFORCE_FAILURE_3
     runfailure v3.0 ${mm} litmus_v3.c -DFORCE_FAILURE_4
-    runfailure v3.0 ${mm} litmus_v3.c -DFORCE_FAILURE_5
+    runsuccess v3.0 ${mm} litmus_v3.c -DFORCE_FAILURE_5
     unroll=19
     runfailure v3.0 ${mm} litmus_v3.c -DFORCE_FAILURE_6
     unroll=5
