@@ -118,7 +118,7 @@ int main()
 		set_cpu(i);
 		rcu_idle_enter();
 	}
-	
+	/* Spawn threads */
         rcu_spawn_gp_kthread();
         if (pthread_create(&tu, NULL, thread_update, NULL))
 		abort();
