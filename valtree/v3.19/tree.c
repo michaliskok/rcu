@@ -1293,7 +1293,12 @@ rcu_start_future_gp(struct rcu_node *rnp, struct rcu_data *rdp,
 	 * Pick up grace-period number for new callbacks.  If this
 	 * grace period is already marked as needed, return to the caller.
 	 */
+#ifdef FORCE_FAILURE_NOCB_2
+	c = rnp->completed;
+	goto out;
+#else
 	c = rcu_cbs_completed(rdp->rsp, rnp);
+#endif
 	trace_rcu_future_gp(rnp, rdp, c, TPS("Startleaf"));
 	if (rnp->need_future_gp[c & 0x1]) {
 		trace_rcu_future_gp(rnp, rdp, c, TPS("Prestartleaf"));

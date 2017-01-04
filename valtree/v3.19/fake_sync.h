@@ -188,6 +188,7 @@ void mutex_unlock(struct mutex *l)
 #define init_waitqueue_head(wait_queue_head) do { } while (0)
 
 #define wake_up(wait_queue_head) do { } while (0)
+#define wake_up_all(wait_queue_head) do { } while (0)
 #define wake_up_locked(wait_queue_head) do { } while (0)
 
 #define wait_event_interruptible(w, condition)	\

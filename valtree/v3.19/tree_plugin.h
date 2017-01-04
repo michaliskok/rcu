@@ -2318,7 +2318,9 @@ wait_again:
 	}
 
 	/* Wait for one grace period. */
+#ifndef FORCE_FAILURE_NOCB_1	
 	rcu_nocb_wait_gp(my_rdp);
+#endif
 
 	/*
 	 * We left ->nocb_leader_sleep unset to reduce cache thrashing.
@@ -2530,7 +2532,7 @@ void __init rcu_init_nohz(void)
 				     &rdp->nxtlist &&
 				     rdp->nxttail[RCU_NEXT_TAIL] != NULL);
 			init_nocb_callback_list(rdp);
-		}
+		} 
 		rcu_organize_nocb_kthreads(rsp);
 	}
 }
@@ -2637,7 +2639,7 @@ static void __init rcu_organize_nocb_kthreads(struct rcu_state *rsp)
 	if (!have_rcu_nocb_mask)
 		return;
 	if (ls == -1) {
-		ls = int_sqrt(nr_cpu_ids);
+		ls = int_sqrt(nr_cpu_ids); 
 		rcu_nocb_leader_stride = ls;
 	}
 
