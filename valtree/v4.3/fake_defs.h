@@ -586,11 +586,11 @@ cpumask_var_t cpu_online_mask;
 
 #define cpumask_or(dst, src1, src2)  (dst) = (src1) | (src2)
 #define cpumask_and(dst, src1, src2) (dst) = (src1) & (src2)
-#define cpumask_subset(src1, src2) ((src1) & ~(src2) == 0)
-#define cpumask_test_cpu(cpu, cpumask) ((cpumask) & (1 << (cpu)) != 0)
+#define cpumask_subset(src1, src2) (((src1) & ~(src2)) == 0)
+#define cpumask_test_cpu(cpu, cpumask) (((cpumask) & 1 << (cpu)) != 0)
 
 #define alloc_bootmem_cpumask_var(x) do { } while (0)
-#define zalloc_cpumask_var(cm, GFP) 0
+#define zalloc_cpumask_var(cm, GFP) true
 #define free_cpumask_var(cm) do { } while (0)
 
 #define cpulist_scnprintf(buf, size, mask) do { } while (0)

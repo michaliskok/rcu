@@ -507,7 +507,7 @@ cpumask_var_t cpu_online_mask;
 #define cpumask_or(dst, src1, src2)  (dst) = (src1) | (src2)
 #define cpumask_and(dst, src1, src2) (dst) = (src1) & (src2)
 #define cpumask_subset(src1, src2) (((src1) & ~(src2)) == 0)
-#define cpumask_test_cpu(cpu, cpumask) (((cpumask) & 1 << cpu) != 0)
+#define cpumask_test_cpu(cpu, cpumask) (((cpumask) & 1 << (cpu)) != 0)
 
 #define alloc_bootmem_cpumask_var(x) do { } while (0)
 #define zalloc_cpumask_var(cm, GFP) true
