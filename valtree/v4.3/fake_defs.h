@@ -72,8 +72,6 @@
 # define __maybe_unused         /* unimplemented */
 #endif
 
-#define ATOMIC_INIT(i)  { (i) }
-
 /* Optimization barrier */
 /* The "volatile" is due to gcc bugs */
 #define barrier() __asm__ volatile("": : :"memory")
@@ -162,6 +160,8 @@ typedef struct {
 typedef struct {
 	long counter;
 } atomic_long_t;
+
+#define ATOMIC_INIT(i)  { (i) }
 
 /* Boolean data types */
 typedef _Bool bool;
@@ -281,7 +281,7 @@ void __read_once_size_nocheck(const volatile void *p, void *res, int size)
                 { .__val = (__force typeof(x)) (val) }; \
         __write_once_size(&(x), __u.__c, sizeof(x));    \
         __u.__val;                                      \
-})
+})  
 
 /* Integer division that rounds up */
 #define DIV_ROUND_UP(n,d) (((n) + (d) - 1) / (d))
