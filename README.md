@@ -3,8 +3,8 @@ Validation of RCU
 
 
 This repository aims at validating the Linux kernel's
-Read-Copy-Update (RCU) mechanism. The above process is available as a technical
-report [here](rcupaper.pdf).
+Read-Copy-Update (RCU) mechanism. This process is available as a technical
+report [here](rcupaper.pdf) (latest revision: 2016/11/30).
 
 Author: Michalis Kokologiannakis.
 
