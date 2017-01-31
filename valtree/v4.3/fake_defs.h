@@ -213,6 +213,7 @@ typedef unsigned long long u64;
 #define S64_MAX		((s64)(U64_MAX>>1))
 #define S64_MIN		((s64)(-S64_MAX - 1))
 
+/* ACCESS_ONCE(), READ_ONCE(), WRITE_ONCE() and relatives */
 #define __ACCESS_ONCE(x) ({ \
          __maybe_unused typeof(x) __var = (__force typeof(x)) 0; \
          (volatile typeof(x) *)&(x); })
@@ -461,8 +462,6 @@ static inline void list_add(struct list_head *new, struct list_head *head)
 #undef CONFIG_RCU_FANOUT_EXACT
 #undef CONFIG_RCU_FAST_NO_HZ
 #undef CONFIG_RCU_BOOST
-#undef CONFIG_RCU_NOCB_CPU
-#undef CONFIG_RCU_NOCB_CPU_ALL
 #undef CONFIG_RCU_CPU_STALL_INFO
 #undef CONFIG_HOTPLUG_CPU
 #undef CONFIG_NO_HZ_FULL_SYSIDLE
@@ -490,7 +489,8 @@ static inline void list_add(struct list_head *new, struct list_head *head)
 #define ____cacheline_internodealigned_in_smp
 #define __percpu
 #define __rcu 
-#define __init 
+#define __init
+#define __initdata
 #define __jiffy_data 
 #define __read_mostly
 #define __noreturn
@@ -811,20 +811,45 @@ int irqs_disabled_flags(unsigned long flags);
 void do_IRQ(void);
 
 void *run_gp_kthread(void *);
+void *run_nocb_kthread(void *);
 
-#define kthread_run(threadfn, data, namefmt, name)			\
-({							   	        \
-        struct task_struct *gp_kthread = NULL;				\
-	pthread_t gp_kthread_t;						\
-        if (!strcmp(name, "rcu_sched") || IS_ENABLED(ENABLE_RCU_BH)) {  \
-		if (pthread_create(&gp_kthread_t, NULL, run_gp_kthread, data)) \
-			abort();					\
-		gp_kthread = malloc(sizeof(*gp_kthread));		\
-		gp_kthread->pid = (unsigned long) gp_kthread_t;		\
-		gp_kthread->tid = gp_kthread_t;				\
-	}								\
-	gp_kthread;							\
-})
+#define get_macro(_1, _2, _3, _4, _5, name, ...) name
+#define kthread_run(...) \
+	get_macro(__VA_ARGS__, spawn_nocb_kthread, spawn_gp_kthread)(__VA_ARGS__)
+
+struct task_struct *spawn_gp_kthread(int (*threadfn)(void *data), void *data,
+				   const char namefmt[], const char name[])
+{							   	        
+	pthread_t t;							
+        struct task_struct *task = NULL;				
+
+        if (!strcmp(name, "rcu_sched") || IS_ENABLED(ENABLE_RCU_BH)) {  
+		if (pthread_create(&t, NULL, run_gp_kthread, data)) 
+			abort();					
+		task = malloc(sizeof(*task));			
+		task->pid = (unsigned long) t;			
+		task->tid = t;
+		return task;
+	}								
+	return NULL;
+}
+
+struct task_struct *spawn_nocb_kthread(int (*threadfn)(void *data), void *data,
+				       const char namefmt[], char abbr, int cpu)
+{
+	pthread_t t;							
+        struct task_struct *task = NULL;				
+									
+        if (abbr == 's' || IS_ENABLED(ENABLE_RCU_BH)) {  
+		if (pthread_create(&t, NULL, run_nocb_kthread, data)) 
+			abort();					
+		task = malloc(sizeof(*task));			
+		task->pid = (unsigned long) t;			
+		task->tid = t;
+		return task;
+	}								
+	return NULL;
+}
 
 #define kthread_create(threadfn, data, namefmt, name) kthread_run(threadfn, data, namefmt, name)
 #define wake_up_process(t) do { } while (0)
