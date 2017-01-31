@@ -5,16 +5,16 @@ Validation of Tree RCU
 This repository aims at validating the non-preemptible version of
 Linux kernel's Tree RCU using [Nidhugg](https://github.com/nidhugg/nidhugg).
 
-* [Licence](#licence)
+* [License](#license)
 * [RCU Requirements](#requirements)
 * [Tree RCU](#tree)
 * [Usage](#usage)
 
-<a name="licence">Licence</a>
+<a name="license">License</a>
 -----------------------------
 
 The code at this repository is distributed under the GPL, version 2 or (at your option) later.
-Please see the COPYING file for details.
+Please see the LICENSE file for details.
 
 <a name="requirements">RCU Requirements</a>
 -------------------------------------------

@@ -1,8 +1,11 @@
 /*
- * Litmus test for correct RCU operation.
+ * Litmus test for the RCU callback offloading mechanism (NOCB_CPU), v3.19.
  *
- * By default, the RCU grace-period kthread for RCU_bh is disabled for
- * faster results. If desired, it can be enabled with -DENABLE_RCU_BH.
+ * By default, the RCU-bh kthread are disabled by default for
+ * faster results. If desired, they can be enabled with -DENABLE_RCU_BH.
+ * This test needs to be compiled with the -DCONFIG_RCU_NOCB_CPU and 
+ * -DCONFIG_RCU_NOCB_CPU_ZERO flags. There are also two added bug 
+ * injections which can be enabled with -DFORCE_FAILURE_NOCB_[1,2].
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -104,6 +107,17 @@ void *run_gp_kthread(void *arg)
 	return NULL;
 }
 
+void *run_nocb_kthread(void *arg)
+{
+	set_cpu(cpu0);
+	fake_acquire_cpu(get_cpu());
+
+	rcu_nocb_kthread(arg);
+
+	fake_release_cpu(get_cpu());
+	return NULL;
+}
+	
 int main()
 {
 	pthread_t tu;
@@ -111,8 +125,13 @@ int main()
 	/* Initialize cpu_possible_mask, cpu_online_mask */
 	set_online_cpus();
 	set_possible_cpus();
+	/* Initialize NOCB CPUs */
+	rcu_nocb_setup("");
+	/* Initialize leader stride so int_sqrt() is not called */
+	rcu_nocb_leader_stride = 1;
 	/* RCU initializations */
 	rcu_init();
+	rcu_init_nohz();
 	/* All CPUs start out idle */
 	for (int i = 0; i < NR_CPUS; i++) {
 		set_cpu(i);

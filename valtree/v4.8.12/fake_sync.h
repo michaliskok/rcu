@@ -41,6 +41,11 @@ struct mutex {
 };
 #define __MUTEX_INITIALIZER(lockname) { .lock = PTHREAD_MUTEX_INITIALIZER }
 
+struct rt_mutex {
+	pthread_mutex_t lock;
+};
+#define __RT_MUTEX_INITIALIZER(lockname) { .lock = PTHREAD_MUTEX_INITIALIZER }
+
 /*
  * wait_queue_head_t is just an empty struct. 
  * Although wait queues can be also modeled with condition variables, 
@@ -169,6 +174,12 @@ void spin_unlock_irqrestore(spinlock_t *lock, unsigned long flags)
 /* 
  * Mutex functions
  */
+void mutex_init(struct mutex *l)
+{
+  if (pthread_mutex_init(&l->lock, NULL))
+		exit(-1);
+}
+
 void mutex_lock(struct mutex *l)
 {
 	if (pthread_mutex_lock(&l->lock))
@@ -181,6 +192,23 @@ void mutex_unlock(struct mutex *l)
 		exit(-1);
 }
 
+int mutex_trylock(struct mutex *l)
+{
+	if (pthread_mutex_trylock(&l->lock)) {
+		return 0;
+	}
+	return 1;
+}
+
+int mutex_is_locked(struct mutex *l)
+{
+	if (mutex_trylock(l)) {
+		mutex_unlock(l);
+		return 0;
+	}
+	else
+		return 1;
+}
 
 /* 
  * Waitqueue functions
@@ -188,8 +216,15 @@ void mutex_unlock(struct mutex *l)
 #define init_waitqueue_head(wait_queue_head) do { } while (0)
 
 #define wake_up(wait_queue_head) do { } while (0)
-#define wake_up_all(wait_queue_head) do { } while (0)
 #define wake_up_locked(wait_queue_head) do { } while (0)
+
+#define wait_event(w, condition)		\
+({					        \
+	fake_release_cpu(get_cpu());		\
+	while (!(condition))			\
+		;				\
+	fake_acquire_cpu(get_cpu());		\
+}) 
 
 #define wait_event_interruptible(w, condition)	\
 ({					        \

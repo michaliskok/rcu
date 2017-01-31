@@ -72,6 +72,8 @@
 # define __maybe_unused         /* unimplemented */
 #endif
 
+#define ATOMIC_INIT(i)  { (i) }
+
 /* Optimization barrier */
 /* The "volatile" is due to gcc bugs */
 #define barrier() __asm__ volatile("": : :"memory")
@@ -160,8 +162,6 @@ typedef struct {
 typedef struct {
 	long counter;
 } atomic_long_t;
-
-#define ATOMIC_INIT(i)  { (i) }
 
 /* Boolean data types */
 typedef _Bool bool;
@@ -281,7 +281,7 @@ void __read_once_size_nocheck(const volatile void *p, void *res, int size)
                 { .__val = (__force typeof(x)) (val) }; \
         __write_once_size(&(x), __u.__c, sizeof(x));    \
         __u.__val;                                      \
-})  
+})
 
 /* Integer division that rounds up */
 #define DIV_ROUND_UP(n,d) (((n) + (d) - 1) / (d))
@@ -586,11 +586,11 @@ cpumask_var_t cpu_online_mask;
 
 #define cpumask_or(dst, src1, src2)  (dst) = (src1) | (src2)
 #define cpumask_and(dst, src1, src2) (dst) = (src1) & (src2)
-#define cpumask_subset(src1, src2) (((src1) & ~(src2)) == 0)
-#define cpumask_test_cpu(cpu, cpumask) (((cpumask) & 1 << (cpu)) != 0)
+#define cpumask_subset(src1, src2) ((src1) & ~(src2) == 0)
+#define cpumask_test_cpu(cpu, cpumask) ((cpumask) & (1 << (cpu)) != 0)
 
 #define alloc_bootmem_cpumask_var(x) do { } while (0)
-#define zalloc_cpumask_var(cm, GFP) true
+#define zalloc_cpumask_var(cm, GFP) 0
 #define free_cpumask_var(cm) do { } while (0)
 
 #define cpulist_scnprintf(buf, size, mask) do { } while (0)

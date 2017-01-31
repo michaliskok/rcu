@@ -73,7 +73,6 @@
 #endif
 
 #define ACCESS_ONCE(x) (*(volatile __typeof__(x) *)&(x))
-#define ATOMIC_INIT(i)  { (i) }
 
 /* Optimization barrier */
 /* The "volatile" is due to gcc bugs */
@@ -164,6 +163,8 @@ typedef struct {
 	long counter;
 } atomic_long_t;
 
+#define ATOMIC_INIT(i)  { (i) }
+
 /* Boolean data types */
 typedef _Bool bool;
 
@@ -216,6 +217,30 @@ typedef unsigned long long u64;
 
 /* Integer division that rounds up */
 #define DIV_ROUND_UP(n,d) (((n) + (d) - 1) / (d))
+
+/* A very rough approximation to the sqrt() function. */
+#define BITS_PER_LONG (sizeof(long) * 8)
+unsigned long int_sqrt(unsigned long x)
+{
+        unsigned long b, m, y = 0;
+
+        if (x <= 1)
+                return x;
+
+        m = 1UL << (BITS_PER_LONG - 2);
+        while (m != 0) {
+                b = y + m;
+                y >>= 1;
+
+                if (x >= b) {
+                        x -= b;
+                        y += m;
+                }
+                m >>= 2;
+        }
+
+        return y;
+}
 
 /* Indirect stringification.  Doing two levels allows the parameter to be a
  * macro itself.  For example, compile with -DFOO=bar, __stringify(FOO)
@@ -363,8 +388,6 @@ static inline void list_add(struct list_head *new, struct list_head *head)
 #undef CONFIG_RCU_FANOUT_EXACT
 #undef CONFIG_RCU_FAST_NO_HZ
 #undef CONFIG_RCU_BOOST
-#undef CONFIG_RCU_NOCB_CPU
-#undef CONFIG_RCU_NOCB_CPU_ALL
 #undef CONFIG_RCU_CPU_STALL_INFO
 #undef CONFIG_HOTPLUG_CPU
 #undef CONFIG_NO_HZ_FULL_SYSIDLE
@@ -390,7 +413,8 @@ static inline void list_add(struct list_head *new, struct list_head *head)
 #define ____cacheline_internodealigned_in_smp
 #define __percpu
 #define __rcu 
-#define __init 
+#define __init
+#define __initdata
 #define __jiffy_data 
 #define __read_mostly
 #define __noreturn
@@ -410,6 +434,20 @@ struct lock_class_key { };
 #define DECLARE_PER_CPU(type, name) extern __typeof__(type) name[NR_CPUS]
 #define DEFINE_PER_CPU(type, name)  __typeof__(type) name[NR_CPUS]
 #define DEFINE_PER_CPU_SHARED_ALIGNED(type, name) DEFINE_PER_CPU(type, name)
+
+#define per_cpu(var, cpu) ((var)[cpu])
+#define per_cpu_ptr(var, cpu) (&(var)[cpu])
+
+#define raw_cpu_ptr(var) per_cpu_ptr(var, get_cpu())
+#define raw_cpu_read(var) per_cpu(var, get_cpu())
+#define raw_cpu_write(var, val) (var)[get_cpu()] = (val)
+
+#define this_cpu_ptr(var) raw_cpu_ptr(var)
+#define __this_cpu_read(var) raw_cpu_read(var)
+#define __this_cpu_write(var, val) raw_cpu_write(var, val)
+
+#define this_cpu_inc(var) (var)[get_cpu()]++
+#define raw_cpu_inc(var) this_cpu_inc(var)
 
 /* Disable CONFIG_RCU_TRACE */
 #define tracepoint_string(x) ""
@@ -451,23 +489,67 @@ struct lock_class_key { };
 #define pr_info(args...) fprintf(stderr, args)
 #define pr_err(args...) fprintf(stderr, args)
 #define pr_cont(args...) fprintf(stderr, args)
+
 #define ftrace_dump(x) do { } while (0)
 #define dump_cpu_task(x) do { } while (0)
 
 #define lockdep_set_class_and_name(lock, class, name) do { } while (0)
 
-/* Stub some rcu_expedited stuff */
+/* Custom bitwise operations */
 typedef int cpumask_var_t;
+cpumask_var_t cpu_possible_mask;
+cpumask_var_t cpu_online_mask;
 
+#define cpumask_set_cpu(cpu, mask) (mask) |= (1 << (cpu))
+#define cpumask_clear_cpu(cpu, mask) (mask) &= ~(1 << (cpu))
+#define cpumask_copy(dst, src) (dst) = (src)
+
+#define cpumask_or(dst, src1, src2)  (dst) = (src1) | (src2)
+#define cpumask_and(dst, src1, src2) (dst) = (src1) & (src2)
+#define cpumask_subset(src1, src2) (((src1) & ~(src2)) == 0)
+#define cpumask_test_cpu(cpu, cpumask) (((cpumask) & 1 << (cpu)) != 0)
+
+#define alloc_bootmem_cpumask_var(x) do { } while (0)
+#define zalloc_cpumask_var(cm, GFP) true
+#define free_cpumask_var(cm) do { } while (0)
+
+#define cpulist_scnprintf(buf, size, mask) do { } while (0)
+#define cpulist_parse(str, mask) do { } while (0)
+
+int cpumask_weight(cpumask_var_t mask)
+{
+	int set_bits, offset;
+
+	for (set_bits = 0, offset = 1; \
+	     offset <= mask; offset <<= 1) 
+		if (offset & mask)
+			set_bits++;
+	return set_bits;
+}
+
+int cpumask_next(int n, cpumask_var_t mask)
+{
+	int cpu, offset;
+
+	for (cpu = n + 1, offset = 1 << (n + 1); \
+	     offset <= mask; cpu++, offset <<= 1) {
+		if (offset & mask)
+			return cpu;
+	}
+	return nr_cpu_ids + 1;
+}
+
+/* Custom macros to set possible and online CPUs */
+#define set_online_cpus() for (int i = 0; i < NR_CPUS; i++) \
+		cpumask_set_cpu(i, cpu_possible_mask);
+#define set_possible_cpus() for (int i = 0; i < NR_CPUS; i++) \
+		cpumask_set_cpu(i, cpu_online_mask);
+
+/* Stub some rcu_expedited stuff */
 int rcu_expedited;
 
-#define zalloc_cpumask_var(cm, GFP) 0
-#define cpumask_copy(cm, mask) do { } while (0)
-#define cpumask_clear_cpu(cpu_id, cm) do { } while (0)
-#define cpumask_weight(cm) 0
 #define try_stop_cpus(exp, fun, arg) 0
 #define EAGAIN 0
-#define free_cpumask_var(cm) do { } while (0)
 #define udelay(time) do { } while (0)
 
 /* Do not keep track of the process' state */
@@ -476,6 +558,8 @@ int rcu_expedited;
 
 /* Nidhugg will take care of the scheduling for us */
 #define schedule()
+/* No timeouts */
+#define schedule_timeout_interruptible(t) do { } while (0)
 
 /* is_idle_task should NOT be a statically defined macro. 
  * However, due to the fact that we are verifying only a portion of Tree RCU's
@@ -499,9 +583,13 @@ struct task_struct __thread *current;
 
 /* CPU iterators based on CONFIG_HOTPLUG_CPU=n */
 #define smp_processor_id() get_cpu()
-#define for_each_possible_cpu(cpu) for ((cpu) = 0; (cpu) < nr_cpu_ids; (cpu)++)
-#define for_each_online_cpu(cpu) for_each_possible_cpu(cpu)
-#define for_each_cpu(cpu, cm) for_each_possible_cpu(cpu)
+#define raw_smp_processor_id() smp_processor_id()
+#define for_each_cpu(cpu, mask)						\
+	for ((cpu) = -1;						\
+	     (cpu) = cpumask_next((cpu), (mask)),			\
+	     (cpu) < nr_cpu_ids;)
+#define for_each_possible_cpu(cpu) for_each_cpu((cpu), cpu_possible_mask)
+#define for_each_online_cpu(cpu) for_each_cpu(cpu, cpu_online_mask)
 
 /* Softirq definitions and data types */
 #define open_softirq(x, y) do { } while (0)
@@ -559,6 +647,8 @@ int noassert;
 #define atomic_cmpxchg(v, old, new)					\
 	__atomic_compare_exchange(&(v)->counter, &old, &new, 0,		\
 				  __ATOMIC_RELAXED, __ATOMIC_RELAXED)
+#define xchg(ptr, val) __atomic_exchange_n(ptr, val, __ATOMIC_RELAXED)
+#define atomic_xchg(ptr, val) (xchg(&(ptr)->counter, (val)))
 
 #define atomic_long_add(i, v) atomic_add(i, v)
 #define atomic_long_add_return(i, v) atomic_add_return(i, v)
@@ -569,6 +659,8 @@ int noassert;
 #define atomic_long_dec_and_test(v) atomic_dec_and_test(v)
 #define atomic_long_read(v) atomic_read(v)
 #define atomic_long_cmpxchg(v, old, new) atomic_cmpxchg(v, old, new)
+#define atomic_long_xchg(ptr, val) atomic_xchg(ptr, val)
+
 
 /* Preempt and bh definitions */
 #define preempt_enable() barrier()
@@ -599,9 +691,10 @@ unsigned long volatile __jiffy_data jiffies;
 
 #define smp_call_function_single(cpu, fun, arg, wait) do { } while (0)
 
-/* Functions designated to run in early_initcalls must be called explicitly */
-#define early_initcall(fn) 
-
+/* early_initcall(), early_param(), __setup() functions must be called explicitly */
+#define early_initcall(fn)
+#define __setup(str, var)
+#define early_param(str,var)
 
 /* Declarations to emulate CPU, interrupts, and scheduling.  */
 void __VERIFIER_assume(int);
@@ -621,20 +714,44 @@ int irqs_disabled_flags(unsigned long flags);
 void do_IRQ(void);
 
 void *run_gp_kthread(void *);
+void *run_nocb_kthread(void *);
 
-#define kthread_run(threadfn, data, namefmt, name)			\
-({							   	        \
-        struct task_struct *gp_kthread = NULL;				\
-	pthread_t gp_kthread_t;						\
-        if (!strcmp(name, "rcu_sched") || IS_ENABLED(ENABLE_RCU_BH)) {  \
-		if (pthread_create(&gp_kthread_t, NULL, run_gp_kthread, data)) \
-			abort();					\
-		gp_kthread = malloc(sizeof(*gp_kthread));		\
-		gp_kthread->pid = (unsigned long) gp_kthread_t;		\
-		gp_kthread->tid = gp_kthread_t;				\
-	}								\
-	gp_kthread;							\
-})
+#define get_macro(_1, _2, _3, _4, _5, name, ...) name
+#define kthread_run(...) \
+	get_macro(__VA_ARGS__, spawn_nocb_kthread, spawn_gp_kthread)(__VA_ARGS__)
 
+struct task_struct *spawn_gp_kthread(int (*threadfn)(void *data), void *data,
+				   const char namefmt[], const char name[])
+{							   	        
+	pthread_t t;							
+        struct task_struct *task = NULL;				
+
+        if (!strcmp(name, "rcu_sched") || IS_ENABLED(ENABLE_RCU_BH)) {  
+		if (pthread_create(&t, NULL, run_gp_kthread, data)) 
+			abort();					
+		task = malloc(sizeof(*task));			
+		task->pid = (unsigned long) t;			
+		task->tid = t;
+		return task;
+	}								
+	return NULL;
+}
+
+struct task_struct *spawn_nocb_kthread(int (*threadfn)(void *data), void *data,
+				       const char namefmt[], char abbr, int cpu)
+{
+	pthread_t t;							
+        struct task_struct *task = NULL;				
+									
+        if (abbr == 's' || IS_ENABLED(ENABLE_RCU_BH)) {  
+		if (pthread_create(&t, NULL, run_nocb_kthread, data)) 
+			abort();					
+		task = malloc(sizeof(*task));			
+		task->pid = (unsigned long) t;			
+		task->tid = t;
+		return task;
+	}								
+	return NULL;
+}
 
 #endif /* __FAKE_DEFS_H */
