@@ -3,20 +3,21 @@ Validation of RCU
 
 
 This repository aims at validating the Linux kernel's
-Read-Copy-Update (RCU) mechanism.
+Read-Copy-Update (RCU) mechanism. The above process is available as a technical
+report [here](rcupaper.pdf).
 
 Author: Michalis Kokologiannakis.
 
-* [Licence](#licence)
+* [License](#license)
 * [Requirements](#requirements)
 * [Directories](#directories)
 * [Contact](#contact)
 
-<a name="licence">Licence</a>
+<a name="license">License</a>
 -----------------------------
 
 The code at this repository is distributed under the GPL, version 2 or (at your option) later.
-Please see the COPYING file for details.
+Please see the LICENSE file for details.
 
 <a name="requirements">Requirements</a>
 --------------------------------------
