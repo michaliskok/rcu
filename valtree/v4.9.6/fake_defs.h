@@ -72,7 +72,16 @@
 # define __maybe_unused         /* unimplemented */
 #endif
 
-#define ATOMIC_INIT(i)  { (i) }
+/*
+ * Check at compile time that something is of a particular type.
+ * Always evaluates to 1 so you may use it easily in comparisons.
+ */
+#define typecheck(type,x) \
+({      type __dummy; \
+        typeof(x) __dummy2; \
+        (void)(&__dummy == &__dummy2); \
+        1; \
+})
 
 /* Optimization barrier */
 /* The "volatile" is due to gcc bugs */
@@ -163,6 +172,8 @@ typedef struct {
 	long counter;
 } atomic_long_t;
 
+#define ATOMIC_INIT(i)  { (i) }
+
 /* Boolean data types */
 typedef _Bool bool;
 
@@ -213,10 +224,13 @@ typedef unsigned long long u64;
 #define S64_MAX		((s64)(U64_MAX>>1))
 #define S64_MIN		((s64)(-S64_MAX - 1))
 
+/* ACCESS_ONCE(), READ_ONCE(), WRITE_ONCE() and relatives */
 #define __ACCESS_ONCE(x) ({ \
          __maybe_unused typeof(x) __var = (__force typeof(x)) 0; \
          (volatile typeof(x) *)&(x); })
 #define ACCESS_ONCE(x) (*__ACCESS_ONCE(x))
+
+#define ACCESS_PRIVATE(p, member) ((p)->member)
 
 static __always_inline void __write_once_size(volatile void *p, void *res, int size)
 {
@@ -281,7 +295,7 @@ void __read_once_size_nocheck(const volatile void *p, void *res, int size)
                 { .__val = (__force typeof(x)) (val) }; \
         __write_once_size(&(x), __u.__c, sizeof(x));    \
         __u.__val;                                      \
-})
+})  
 
 /* Integer division that rounds up */
 #define DIV_ROUND_UP(n,d) (((n) + (d) - 1) / (d))
@@ -461,8 +475,6 @@ static inline void list_add(struct list_head *new, struct list_head *head)
 #undef CONFIG_RCU_FANOUT_EXACT
 #undef CONFIG_RCU_FAST_NO_HZ
 #undef CONFIG_RCU_BOOST
-#undef CONFIG_RCU_NOCB_CPU
-#undef CONFIG_RCU_NOCB_CPU_ALL
 #undef CONFIG_RCU_CPU_STALL_INFO
 #undef CONFIG_HOTPLUG_CPU
 #undef CONFIG_NO_HZ_FULL_SYSIDLE
@@ -490,10 +502,13 @@ static inline void list_add(struct list_head *new, struct list_head *head)
 #define ____cacheline_internodealigned_in_smp
 #define __percpu
 #define __rcu 
-#define __init 
+#define __init
+#define __initdata
 #define __jiffy_data 
 #define __read_mostly
+#define __private
 #define __noreturn
+#define __latent_entropy
 
 #define __acquires(x)
 #define __releases(x)
@@ -555,6 +570,10 @@ struct lock_class_key { };
 #define trace_rcu_torture_read(rcutorturename, rhp, secs, c_old, c)	\
         do { } while (0)
 #define trace_rcu_barrier(name, s, cpu, cnt, done) do { } while (0)
+#define trace_rcu_exp_funnel_lock(rcuname, level, grplo, grphi, gpevent) \
+	do { } while (0)
+#define trace_rcu_exp_grace_period(rcuname, gqseq, gpevent) \
+        do { } while (0)
 
 /* Module macros */
 #define MODULE_ALIAS(x)
@@ -571,7 +590,7 @@ struct lock_class_key { };
 #define ftrace_dump(x) do { } while (0)
 #define dump_cpu_task(x) do { } while (0)
 #define sched_show_task(x) do { } while (0)
-#define kstat_softirqs_cpu(softirq, cpu) 0
+#define trigger_single_cpu_backtrace(cpu) 1
 
 #define lockdep_set_class_and_name(lock, class, name) do { } while (0)
 
@@ -586,11 +605,11 @@ cpumask_var_t cpu_online_mask;
 
 #define cpumask_or(dst, src1, src2)  (dst) = (src1) | (src2)
 #define cpumask_and(dst, src1, src2) (dst) = (src1) & (src2)
-#define cpumask_subset(src1, src2) ((src1) & ~(src2) == 0)
-#define cpumask_test_cpu(cpu, cpumask) ((cpumask) & (1 << (cpu)) != 0)
+#define cpumask_subset(src1, src2) (((src1) & ~(src2)) == 0)
+#define cpumask_test_cpu(cpu, cpumask) (((cpumask) & 1 << (cpu)) != 0)
 
 #define alloc_bootmem_cpumask_var(x) do { } while (0)
-#define zalloc_cpumask_var(cm, GFP) 0
+#define zalloc_cpumask_var(cm, GFP) true
 #define free_cpumask_var(cm) do { } while (0)
 
 #define cpulist_scnprintf(buf, size, mask) do { } while (0)
@@ -699,6 +718,19 @@ int need_softirq[nr_cpu_ids];
 struct softirq_action {
 };
 
+#define kstat_softirqs_cpu(irq, cpu) 0
+
+/* Workqueue definitions and data types */
+struct work_struct;
+typedef void (*work_func_t)(struct work_struct *work);
+
+struct work_struct { };
+
+#define INIT_WORK_ONSTACK(_work, _func) do { } while (0)
+
+#define schedule_work(_work) do { } while (0)
+
+
 /* Notifier data types -- not of much interest */
 struct notifier_block;
 
@@ -767,12 +799,20 @@ int noassert;
 #define preempt_enable_notrace() barrier()
 #define local_bh_disable() do { } while (0)
 #define local_bh_enable() do { } while (0)
+#define preemptible() 0
 
 #define prefetch(next) do { } while (0)
 
-/* More CPU-relevant definitions, CONFIG_HOTPLUG_CPU=n  */
+/* Time-related definitions */
 unsigned long volatile __jiffy_data jiffies;
 
+#define time_after(a,b)         \
+        (typecheck(unsigned long, a) && \
+         typecheck(unsigned long, b) && \
+         ((long)((b) - (a)) < 0))
+#define time_before(a,b)        time_after(b,a)
+
+/* More CPU-relevant definitions, CONFIG_HOTPLUG_CPU=n  */
 #define cpu_is_offline(cpu) 0
 #define cpu_is_online(cpu) 1
 #define cpu_online(cpu) 1
@@ -787,11 +827,12 @@ unsigned long volatile __jiffy_data jiffies;
 #define cpu_notifier(fn, pri) do { (void)(fn); } while (0)
 #define pm_notifier(fn, pri)  do { (void)(fn); } while (0)
 
-#define smp_call_function_single(cpu, fun, arg, wait) do { } while (0)
+typedef void (*smp_call_func_t)(void *info);
+#define smp_call_function_single(cpu, fun, arg, wait) 0
 
-/* Functions designated to run in early_initcalls must be called explicitly */
+/* Functions designated to run in initcalls must be called explicitly */
 #define early_initcall(fn) 
-
+#define core_initcall(fn)
 
 /* Declarations to emulate CPU, interrupts, and scheduling.  */
 void __VERIFIER_assume(int);
@@ -811,24 +852,51 @@ int irqs_disabled_flags(unsigned long flags);
 void do_IRQ(void);
 
 void *run_gp_kthread(void *);
+void *run_nocb_kthread(void *);
 
-#define kthread_run(threadfn, data, namefmt, name)			\
-({							   	        \
-        struct task_struct *gp_kthread = NULL;				\
-	pthread_t gp_kthread_t;						\
-        if (!strcmp(name, "rcu_sched") || IS_ENABLED(ENABLE_RCU_BH)) {  \
-		if (pthread_create(&gp_kthread_t, NULL, run_gp_kthread, data)) \
-			abort();					\
-		gp_kthread = malloc(sizeof(*gp_kthread));		\
-		gp_kthread->pid = (unsigned long) gp_kthread_t;		\
-		gp_kthread->tid = gp_kthread_t;				\
-	}								\
-	gp_kthread;							\
-})
+#define get_macro(_1, _2, _3, _4, _5, name, ...) name
+#define kthread_run(...) \
+	get_macro(__VA_ARGS__, spawn_nocb_kthread, spawn_gp_kthread)(__VA_ARGS__)
+
+struct task_struct *spawn_gp_kthread(int (*threadfn)(void *data), void *data,
+				   const char namefmt[], const char name[])
+{							   	        
+	pthread_t t;							
+        struct task_struct *task = NULL;				
+
+        if (!strcmp(name, "rcu_sched") || IS_ENABLED(ENABLE_RCU_BH)) {  
+		if (pthread_create(&t, NULL, run_gp_kthread, data)) 
+			abort();					
+		task = malloc(sizeof(*task));			
+		task->pid = (unsigned long) t;			
+		task->tid = t;
+		return task;
+	}								
+	return NULL;
+}
+
+struct task_struct *spawn_nocb_kthread(int (*threadfn)(void *data), void *data,
+				       const char namefmt[], char abbr, int cpu)
+{
+	pthread_t t;							
+        struct task_struct *task = NULL;				
+									
+        if (abbr == 's' || IS_ENABLED(ENABLE_RCU_BH)) {  
+		if (pthread_create(&t, NULL, run_nocb_kthread, data)) 
+			abort();					
+		task = malloc(sizeof(*task));			
+		task->pid = (unsigned long) t;			
+		task->tid = t;
+		return task;
+	}								
+	return NULL;
+}
 
 #define kthread_create(threadfn, data, namefmt, name) kthread_run(threadfn, data, namefmt, name)
 #define wake_up_process(t) do { } while (0)
 
 #define sched_setscheduler_nocheck(task, policy, param) do { } while (0)
+
+int rcu_normal;
 
 #endif /* __FAKE_DEFS_H */

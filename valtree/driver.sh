@@ -20,7 +20,7 @@
 
 unroll=5
 
-# runfailure <kernel_version> --<memory_model> <source_file> CFLAGS
+# runfailure <kernel_version> <memory_model> <source_file> CFLAGS
 #
 # Run Nidhugg on the specified <source_file>, under the memory model
 # specified by <memody_model>, on Linux kernel version <kernel_version>,
@@ -47,7 +47,7 @@ runfailure() {
     fi
 }
 
-# runsuccess <kernel_version> -- --<memory_model> <source_file> CFLAGS
+# runsuccess <kernel_version> <memory_model> <source_file> CFLAGS
 #
 # Run Nidhugg on the specified <source_file>, under the memory model
 # specified by <memody_model>, on Linux kernel version <kernel_version>,

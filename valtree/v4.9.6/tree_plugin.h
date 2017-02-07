@@ -670,7 +670,7 @@ void synchronize_rcu(void)
 			 lock_is_held(&rcu_lock_map) ||
 			 lock_is_held(&rcu_sched_lock_map),
 			 "Illegal synchronize_rcu() in RCU read-side critical section");
-	if (!rcu_scheduler_active)
+	if (rcu_scheduler_active == RCU_SCHEDULER_INACTIVE)
 		return;
 	if (rcu_gp_is_expedited())
 		synchronize_rcu_expedited();
@@ -1669,7 +1669,7 @@ static void increment_cpu_stall_ticks(void)
 	struct rcu_state *rsp;
 
 	for_each_rcu_flavor(rsp)
-		raw_cpu_inc(rsp->rda->ticks_this_gp);
+		rsp->rda[get_cpu()].ticks_this_gp++;
 }
 
 #ifdef CONFIG_RCU_NOCB_CPU
@@ -2173,6 +2173,7 @@ static int rcu_nocb_kthread(void *arg)
 				cl++;
 			c++;
 			local_bh_enable();
+			cond_resched_rcu_qs();
 			list = next;
 		}
 		trace_rcu_batch_end(rdp->rsp->name, c, !!list, 0, 0, 1);

@@ -47,13 +47,15 @@ struct rt_mutex {
 #define __RT_MUTEX_INITIALIZER(lockname) { .lock = PTHREAD_MUTEX_INITIALIZER }
 
 /*
- * wait_queue_head_t is just an empty struct. 
+ * wait_queue_head_t and swait_queue_head are just empty structs. 
  * Although wait queues can be also modeled with condition variables, 
  * for our purposes, and due to the fact that Nidhugg uses the spin-assume 
  * transformation, busy-waiting is sufficient.
  */
 typedef struct __wait_queue_head {
 } wait_queue_head_t;
+
+struct swait_queue_head { };
 
 /*
  * Since threads waiting on a waitqueue are just spinning, threads waiting
@@ -136,6 +138,12 @@ int raw_spin_trylock(raw_spinlock_t *l)
 /* 
  * Spinlock functions
  */
+void spin_lock_init(raw_spinlock_t *l)
+{
+	if (pthread_mutex_init(l, NULL))
+		exit(-1);
+}
+
 void spin_lock(spinlock_t *l)
 {
 	preempt_disable();
@@ -210,53 +218,50 @@ int mutex_is_locked(struct mutex *l)
 		return 1;
 }
 
+
 /* 
  * Waitqueue functions
  */
 #define init_waitqueue_head(wait_queue_head) do { } while (0)
+#define init_swait_queue_head(wait_queue_head) do { } while (0)
 
 #define wake_up(wait_queue_head) do { } while (0)
+#define wake_up_all(wait_queue_head) do { } while (0)
 #define wake_up_locked(wait_queue_head) do { } while (0)
+#define swake_up(swait_queue_head) do { } while (0)
+#define swake_up_all(swait_queue_head) do { } while (0)
+#define swake_up_all_locked(swait_queue_head) do { } while (0)
 
 #define wait_event(w, condition)		\
 ({					        \
-	fake_release_cpu(get_cpu());		\
-	while (!(condition))			\
-		;				\
-	fake_acquire_cpu(get_cpu());		\
-}) 
+	if (!IS_ENABLED(IRQ_THREADS))		\
+		do_IRQ();			\
+	 fake_release_cpu(get_cpu());		\
+	 while (!(condition))			\
+ 		 ;				\
+	 fake_acquire_cpu(get_cpu());		\
+})
 
-#define wait_event_interruptible(w, condition)	\
-({					        \
-	do_IRQ();				\
-	fake_release_cpu(get_cpu());		\
-	while (!(condition))			\
-		;				\
-	fake_acquire_cpu(get_cpu());		\
-}) 
+#define wait_event_interruptible(w, condition) wait_event(w, condition)
+#define swait_event_interruptible(w, condition)	wait_event(w, condition)
+#define swait_event_timeout(w, condition, timeout) ({ wait_event(w, condition); 1; })
 
-#ifdef FORCE_FAILURE_4
-#define wait_event_interruptible_timeout(w, condition, timeout)		\
+#define wait_event_interruptible_timeout(w, condition, timeout)	\
 ({								        \
-	rcu_gp_fqs(&rcu_sched_state, RCU_SAVE_DYNTICK);			\
-	do_IRQ();							\
+        if (!IS_ENABLED(IRQ_THREADS))					\
+		do_IRQ();						\
+	if (IS_ENABLED(FORCE_FAILURE_4)) {				\
+		rcu_gp_fqs(&rcu_sched_state, true);			\
+		rcu_gp_fqs(&rcu_sched_state, false);			\
+	}								\
 	fake_release_cpu(get_cpu());					\
 	while (!(condition))						\
 		;							\
 	fake_acquire_cpu(get_cpu());					\
 	true;								\
 })
-#else
-#define wait_event_interruptible_timeout(w, condition, timeout)		\
-({								        \
-	do_IRQ();							\
-	fake_release_cpu(get_cpu());					\
-	while (!(condition))						\
-		;							\
-	fake_acquire_cpu(get_cpu());					\
-	true;								\
-})
-#endif
+#define swait_event_interruptible_timeout(w, condition, timeout)	\
+	wait_event_interruptible_timeout(w, condition, timeout)
 
 
 /* 

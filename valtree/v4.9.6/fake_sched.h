@@ -123,9 +123,10 @@ void resched_cpu(int cpu)
  *
  * These functions acquire the irq_lock if it is not a nested interrupt,
  * release it if we are returning to kernel space, and count the current 
- * interrupt depth.
+ * interrupt depth. When a thread disables/enables interrupts, it has to
+ * acquire/release the irq_lock.
  */
-static int local_irq_depth[nr_cpu_ids];
+static int __thread local_irq_depth[nr_cpu_ids];
 
 void local_irq_save(unsigned long flags)
 {
@@ -198,10 +199,36 @@ void do_IRQ(void)
 	local_irq_disable();
 	irq_enter();
 
-	rcu_check_callbacks(0);
-
+//	rcu_check_callbacks(0);
+	need_softirq[get_cpu()] = 1;
 	local_irq_enable();
 	irq_exit();
 }
+
+/* 
+ * Interrupts are modeled by having a thread executing do_IRQ() repeatedly
+ * on a designated CPU, which is passed as a parameter to this function.
+ */
+void *irq_thread(void *cpu)
+{
+	set_cpu(*(int *) cpu);
+
+	for (;;)
+		do_IRQ();
+	return NULL;
+}
+
+static int irq_cpus[NR_CPUS];
+
+void spawn_irq_kthread(int i)
+{
+	pthread_t t;
+
+	irq_cpus[i] = i;
+	if (pthread_create(&t, NULL, irq_thread, &irq_cpus[i]))
+		abort();
+	return;
+}
+
 
 #endif /* __FAKE_SCHED_H */
