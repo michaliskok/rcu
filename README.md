@@ -1,10 +1,12 @@
 Validation of RCU
 =================
 
+This repository contains code and tests that aim to verify some key properties
+of the Linux kernel's Read-Copy-Update (RCU) mechanism.
 
-This repository aims at validating the Linux kernel's
-Read-Copy-Update (RCU) mechanism. This process is available as a technical
-report [here](rcupaper.pdf) (latest revision: 2016/11/30).
+You can find some more information about our attempt to verify
+the _grace period guarantee_ of Hierarchical RCU (Tree RCU) in this
+[still unpublished paper](rcupaper.pdf) (latest revision: 2016/11/30).
 
 Author: Michalis Kokologiannakis.
 
