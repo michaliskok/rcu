@@ -234,40 +234,32 @@ int mutex_is_locked(struct mutex *l)
 
 #define wait_event(w, condition)		\
 ({					        \
-	do_IRQ();				\
-	fake_release_cpu(get_cpu());		\
-	while (!(condition))			\
-		;				\
-	fake_acquire_cpu(get_cpu());		\
+	if (!IS_ENABLED(IRQ_THREADS))		\
+		do_IRQ();			\
+	 fake_release_cpu(get_cpu());		\
+	 while (!(condition))			\
+ 		 ;				\
+	 fake_acquire_cpu(get_cpu());		\
 })
 
 #define wait_event_interruptible(w, condition) wait_event(w, condition)
 #define swait_event_interruptible(w, condition)	wait_event(w, condition)
 #define swait_event_timeout(w, condition, timeout) ({ wait_event(w, condition); 1; })
 
-#ifdef FORCE_FAILURE_4
-# define wait_event_interruptible_timeout(w, condition, timeout)	\
+#define wait_event_interruptible_timeout(w, condition, timeout)	\
 ({								        \
-	do_IRQ();							\
-	rcu_gp_fqs(&rcu_sched_state, true);				\
-	rcu_gp_fqs(&rcu_sched_state, false);				\
+        if (!IS_ENABLED(IRQ_THREADS))					\
+		do_IRQ();						\
+	if (IS_ENABLED(FORCE_FAILURE_4)) {				\
+		rcu_gp_fqs(&rcu_sched_state, true);			\
+		rcu_gp_fqs(&rcu_sched_state, false);			\
+	}								\
 	fake_release_cpu(get_cpu());					\
 	while (!(condition))						\
 		;							\
 	fake_acquire_cpu(get_cpu());					\
 	true;								\
 })
-#else
-# define wait_event_interruptible_timeout(w, condition, timeout)	\
-({								        \
-	do_IRQ();							\
-	fake_release_cpu(get_cpu());					\
-	while (!(condition))						\
-		;							\
-	fake_acquire_cpu(get_cpu());					\
-	true;								\
-})
-#endif
 #define swait_event_interruptible_timeout(w, condition, timeout)	\
 	wait_event_interruptible_timeout(w, condition, timeout)
 

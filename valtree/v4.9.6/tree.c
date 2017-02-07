@@ -1879,7 +1879,14 @@ static bool __note_gp_changes(struct rcu_state *rsp, struct rcu_node *rnp,
 		need_gp = !!(rnp->qsmask & rdp->grpmask);
 		rdp->cpu_no_qs.b.norm = need_gp;
 		rdp->rcu_qs_ctr_snap = __this_cpu_read(rcu_qs_ctr);
+#ifdef LIVENESS_CHECK_1
+		rdp->core_needs_qs = 0;
+#else
 		rdp->core_needs_qs = need_gp;
+#endif
+#ifdef FORCE_FAILURE_5
+		rnp->qsmask &= rdp->grpmask;
+#endif
 		zero_cpu_stall_ticks(rdp);
 		WRITE_ONCE(rdp->gpwrap, false);
 	}
@@ -2014,7 +2021,11 @@ static bool rcu_gp_init(struct rcu_state *rsp)
 		raw_spin_lock_irq_rcu_node(rnp);
 		rdp = this_cpu_ptr(rsp->rda);
 		rcu_preempt_check_blocked_tasks(rnp);
+#ifdef FORCE_FAILURE_3
+		rnp->qsmask = 0;
+#else
 		rnp->qsmask = rnp->qsmaskinit;
+#endif
 		WRITE_ONCE(rnp->gpnum, rsp->gpnum);
 		if (WARN_ON_ONCE(rnp->completed != rsp->completed))
 			WRITE_ONCE(rnp->completed, rsp->completed);
@@ -2385,12 +2396,14 @@ rcu_report_qs_rnp(unsigned long mask, struct rcu_state *rsp,
 						 mask, rnp->qsmask, rnp->level,
 						 rnp->grplo, rnp->grphi,
 						 !!rnp->gp_tasks);
+#ifndef FORCE_FAILURE_6
 		if (rnp->qsmask != 0 || rcu_preempt_blocked_readers_cgp(rnp)) {
 
 			/* Other bits still set at this level, so done. */
 			raw_spin_unlock_irqrestore_rcu_node(rnp, flags);
 			return;
 		}
+#endif
 		mask = rnp->grpmask;
 		if (rnp->parent == NULL) {
 
