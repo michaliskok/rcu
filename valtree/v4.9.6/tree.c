@@ -247,6 +247,9 @@ static int rcu_gp_in_progress(struct rcu_state *rsp)
  */
 void rcu_sched_qs(void)
 {
+#ifdef LIVENESS_CHECK_2
+	return;
+#endif
 	if (!rcu_sched_data[get_cpu()].cpu_no_qs.s)
 		return;
 	trace_rcu_grace_period(TPS("rcu_sched"),
@@ -2376,6 +2379,9 @@ rcu_report_qs_rnp(unsigned long mask, struct rcu_state *rsp,
 		  struct rcu_node *rnp, unsigned long gps, unsigned long flags)
 	__releases(rnp->lock)
 {
+#ifdef LIVENESS_CHECK_3
+	return;
+#endif
 	unsigned long oldmask = 0;
 	struct rcu_node *rnp_c;
 
