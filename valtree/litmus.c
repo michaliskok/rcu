@@ -121,11 +121,13 @@ int main()
 	/* All CPUs start out idle -- IRQ threads are spawned */
 	for (int i = 0; i < NR_CPUS; i++) {
 		set_cpu(i);
-		if (IS_ENABLED(MARK_ONLINE_CPUS))
-			rcu_cpu_starting(i);
+#ifdef MARK_ONLINE_CPUS
+		rcu_cpu_starting(i);
+#endif
 		rcu_idle_enter();
-		if (IS_ENABLED(IRQ_THREADS))
-			spawn_irq_kthread(i);
+#ifdef IRQ_THREADS
+		spawn_irq_kthread(i);
+#endif
 	}
 	/* Spawn threads */
         rcu_spawn_gp_kthread();
