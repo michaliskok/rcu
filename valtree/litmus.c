@@ -3,6 +3,9 @@
  *
  * By default, the RCU grace-period kthread for RCU_bh is disabled for
  * faster results. If desired, it can be enabled with -DENABLE_RCU_BH.
+ * This test also supports the modeling of interrupts with separate
+ * threads for v4.9.6 (-DIRQ_THREADS). However, this approach blows up
+ * the state space.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -51,23 +54,26 @@ void *thread_reader(void *arg)
 	fake_acquire_cpu(get_cpu());
 
 	rcu_read_lock();	
-        r_x = x; 
-	do_IRQ();
-#ifdef FORCE_FAILURE_4
-	rcu_idle_enter();
-	rcu_idle_exit();
-#endif
-#ifdef FORCE_FAILURE_1
-	cond_resched();
-	do_IRQ();
-#endif
+        r_x = x;
+	if (!IS_ENABLED(IRQ_THREADS))
+		do_IRQ();
+	if (IS_ENABLED(FORCE_FAILURE_4)) {
+		rcu_idle_enter();
+		rcu_idle_exit();
+	}
+	if (IS_ENABLED(FORCE_FAILURE_1)) {
+		cond_resched();
+		if (!IS_ENABLED(IRQ_THREADS))
+			do_IRQ();
+	}
 	r_y = y; 
 	rcu_read_unlock();
-#if !defined(FORCE_FAILURE_1) && !defined(FORCE_FAILURE_4) &&	\
-    !defined(FORCE_FAILURE_5)
-	cond_resched();
-	do_IRQ();
-#endif
+	if (!IS_ENABLED(FORCE_FAILURE_1) && !IS_ENABLED(FORCE_FAILURE_4)
+	    && !IS_ENABLED(FORCE_FAILURE_5)) {
+		cond_resched();
+		if (!IS_ENABLED(IRQ_THREADS))
+			do_IRQ();
+	}
 
 	fake_release_cpu(get_cpu());	
 	return NULL;
@@ -80,9 +86,8 @@ void *thread_update(void *arg)
 
 	x = 1;
 	synchronize_rcu();
-#ifdef ASSERT_0
-	assert(0);
-#endif
+	if (IS_ENABLED(ASSERT_0))
+		assert(0);
 	y = 1;
 
 	fake_release_cpu(get_cpu());
@@ -113,10 +118,14 @@ int main()
 	set_possible_cpus();
 	/* RCU initializations */
 	rcu_init();
-	/* All CPUs start out idle */
+	/* All CPUs start out idle -- IRQ threads are spawned */
 	for (int i = 0; i < NR_CPUS; i++) {
 		set_cpu(i);
+		if (IS_ENABLED(MARK_ONLINE_CPUS))
+			rcu_cpu_starting(i);
 		rcu_idle_enter();
+		if (IS_ENABLED(IRQ_THREADS))
+			spawn_irq_kthread(i);
 	}
 	/* Spawn threads */
         rcu_spawn_gp_kthread();

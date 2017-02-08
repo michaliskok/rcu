@@ -899,4 +899,10 @@ struct task_struct *spawn_nocb_kthread(int (*threadfn)(void *data), void *data,
 
 int rcu_normal;
 
+/* 
+ * In recent kernel versions rcu_cpu_starting() has to be called for all
+ * online CPUs. We need to do this manually.
+ */
+#define MARK_ONLINE_CPUS 1
+
 #endif /* __FAKE_DEFS_H */
