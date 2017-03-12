@@ -200,7 +200,7 @@ void do_IRQ(void)
 	irq_enter();
 
 	rcu_check_callbacks(0);
-	need_softirq[get_cpu()] = 1;
+	
 	local_irq_enable();
 	irq_exit();
 }
