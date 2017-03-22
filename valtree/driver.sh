@@ -23,7 +23,7 @@ unroll=5
 # runfailure <kernel_version> <memory_model> <source_file> CFLAGS
 #
 # Run Nidhugg on the specified <source_file>, under the memory model
-# specified by <memody_model>, on Linux kernel version <kernel_version>,
+# specified by <memory_model>, on Linux kernel version <kernel_version>,
 # with the expectation that verification will fail.
 # Additional arguments will be passed to the clang compiler (see test
 # files for more information).
@@ -50,7 +50,7 @@ runfailure() {
 # runsuccess <kernel_version> <memory_model> <source_file> CFLAGS
 #
 # Run Nidhugg on the specified <source_file>, under the memory model
-# specified by <memody_model>, on Linux kernel version <kernel_version>,
+# specified by <memory_model>, on Linux kernel version <kernel_version>,
 # with the expectation that verification will succeed.
 # Additional arguments will be passed to the clang compiler (see test
 # files for more information).
