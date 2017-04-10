@@ -109,8 +109,8 @@ do
     runsuccess v3.0 ${mm} litmus_v3.c -DLIVENESS_CHECK_2 -DASSERT_0
     runsuccess v3.0 ${mm} litmus_v3.c -DLIVENESS_CHECK_3 -DASSERT_0
 done
-# Linux kernel v3.19, v4.3
-for version in v3.19 v4.3
+# Linux kernels v3.19, v4.3, v4.7, and v4.9.6
+for version in v3.19 v4.3 v4.7 v4.9.6
 do
     for mm in sc tso
     do
