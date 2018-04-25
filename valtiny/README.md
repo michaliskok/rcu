@@ -81,9 +81,9 @@ re-acquire it.
 
 To run under TSO:
 
-	nidhuggc -I . -- --tso --disable-mutex-init-requirement fake.c
+	nidhuggc -I. -- --tso --disable-mutex-init-requirement fake.c
 
 To force failure by dividing the grace period in half, and allowing a context switch
 between the two grace periods:
 
-	nidhuggc -I . -DFORCE_FAILURE -- --tso --disable-mutex-init-requirement fake.c
+	nidhuggc -I. -DFORCE_FAILURE -- --tso --disable-mutex-init-requirement fake.c

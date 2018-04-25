@@ -37,7 +37,7 @@ runfailure() {
     echo '--- Preparing to run tests on kernel' ${k_version} under ${mem_model}
     echo '--- Expecting verification failure'
     echo '--------------------------------------------------------------------'
-    if nidhuggc -I ${k_version} -std=gnu99 $* -- --${mem_model}  \
+    if nidhuggc -I${k_version} -std=gnu99 $* -- --${mem_model}  \
 		--extfun-no-race=fprintf --extfun-no-race=memcpy \
 		--print-progress-estimate --disable-mutex-init-requirement \
 		--unroll=${unroll} ${test_file}
@@ -64,7 +64,7 @@ runsuccess() {
     echo '--- Preparing to run tests on kernel' ${k_version} under ${mem_model}
     echo '--- Expecting verification success'
     echo '--------------------------------------------------------------------'
-    if nidhuggc -I ${k_version} -std=gnu99 $* -- --${mem_model}  \
+    if nidhuggc -I${k_version} -std=gnu99 $* -- --${mem_model}  \
 		--extfun-no-race=fprintf --extfun-no-race=memcpy \
 		--print-progress-estimate --disable-mutex-init-requirement \
 		--unroll=${unroll} ${test_file}
