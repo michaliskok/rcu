@@ -78,28 +78,30 @@
 /* The "volatile" is due to gcc bugs */
 #define barrier() __asm__ volatile("": : :"memory")
 
-/* Other barriers -- x86 config */
-#define mb()    __asm__ volatile("mfence":::"memory")
-#define rmb()   __asm__ volatile("lfence":::"memory")
-#define wmb()   __asm__ volatile("sfence" ::: "memory")
+/* Other barriers -- x86 config by default */
+#ifdef PSO
+# define mb()    __asm__ volatile("mfence":::"memory")
+# define rmb()   __asm__ volatile("lfence":::"memory")
+# define wmb()   __asm__ volatile("sfence" ::: "memory")
 
-#define dma_rmb()       barrier()
-#define dma_wmb()       barrier()
+# define dma_rmb()       barrier()
+# define dma_wmb()       barrier()
 
-#define smp_mb()        mb()
-#define smp_rmb()       dma_rmb()
-#define smp_wmb()       barrier()
+# define smp_mb()        mb()
+# define smp_rmb()       dma_rmb()
+# define smp_wmb()       mb()
 
-#define read_barrier_depends()          do { } while (0)
-#define smp_read_barrier_depends()      do { } while (0)
+# define read_barrier_depends()          do { } while (0)
+# define smp_read_barrier_depends()      do { } while (0)
 
-#define smp_store_release(p, v)			\
-	do {					\
-		barrier();			\
-		ACCESS_ONCE(*p) = (v);		\
+# define smp_store_release(p, v)			\
+	do {						\
+		barrier();				\
+		smp_mb();				\
+		ACCESS_ONCE(*p) = (v);			\
 	} while (0)
 
-#define smp_load_acquire(p)				\
+# define smp_load_acquire(p)				\
 	({						\
 		__typeof__(*p) ___p1 = ACCESS_ONCE(*p);	\
 							\
@@ -107,12 +109,46 @@
 		___p1;					\
 	})
 
-#define smp_mb__before_atomic() barrier()
-#define smp_mb__after_atomic()  barrier()
-#define smp_mb__before_atomic_inc() barrier()
-#define smp_mb__after_atomic_inc() barrier()
+# define smp_mb__before_atomic() barrier()
+# define smp_mb__after_atomic()  barrier()
 
-#define smp_mb__after_unlock_lock()     do { } while (0)
+# define smp_mb__after_unlock_lock()     do { } while (0)
+#else /* #ifdef PSO */
+# define mb()    __asm__ volatile("mfence":::"memory")
+# define rmb()   __asm__ volatile("lfence":::"memory")
+# define wmb()   __asm__ volatile("sfence" ::: "memory")
+
+# define dma_rmb()       barrier()
+# define dma_wmb()       barrier()
+
+# define smp_mb()        mb()
+# define smp_rmb()       dma_rmb()
+# define smp_wmb()       barrier()
+
+# define read_barrier_depends()          do { } while (0)
+# define smp_read_barrier_depends()      do { } while (0)
+
+# define smp_store_release(p, v)			\
+	do {						\
+		barrier();				\
+		ACCESS_ONCE(*p) = (v);			\
+	} while (0)
+
+# define smp_load_acquire(p)				\
+	({						\
+		__typeof__(*p) ___p1 = ACCESS_ONCE(*p);	\
+							\
+		barrier();				\
+		___p1;					\
+	})
+
+# define smp_mb__before_atomic() barrier()
+# define smp_mb__after_atomic()  barrier()
+# define smp_mb__before_atomic_inc() barrier()
+# define smp_mb__after_atomic_inc() barrier()
+
+# define smp_mb__after_unlock_lock()     do { } while (0)
+#endif /* #ifdef PSO */
 
 /* Atomic data types */
 typedef struct {
@@ -187,12 +223,12 @@ typedef unsigned long long u64;
 struct list_head {
 	struct list_head *next, *prev;
 };
- 
+
 #define LIST_HEAD_INIT(name) { &(name), &(name) }
- 
+
 #define LIST_HEAD(name)					\
 	struct list_head name = LIST_HEAD_INIT(name)
- 
+
 static inline void INIT_LIST_HEAD(struct list_head *list)
 {
 	list->next = list;
@@ -454,13 +490,13 @@ int rcu_expedited;
 #define udelay(time) do { } while (0)
 
 /* Do not keep track of the process' state */
-#define set_current_state(STATE) 
+#define set_current_state(STATE)
 #define __set_current_state(STATE)
 
 /* Nidhugg will take care of the scheduling for us */
 #define schedule()
 
-/* is_idle_task should NOT be a statically defined macro. 
+/* is_idle_task should NOT be a statically defined macro.
  * However, due to the fact that we are verifying only a portion of Tree RCU's
  * source code, we CAN set it equal to 1. That way, no warning is triggered
  * and there should not be any behavioural change for RCU.
@@ -486,8 +522,8 @@ struct task_struct __thread *current;
 #define for_each_online_cpu(cpu) for_each_possible_cpu(cpu)
 #define for_each_cpu(cpu, cm) for_each_possible_cpu(cpu)
 
-/* 
- * on_each_cpu() is stubbed because we don't really care about it. This 
+/*
+ * on_each_cpu() is stubbed because we don't really care about it. This
  * function is only used in rcu_barrier(), and for the purposes of the
  * test we can stub it.
  */
@@ -545,10 +581,10 @@ int noassert;
 #define panic(msg) { perror(msg); assert(0); }
 #define IS_ERR(x) 0
 
-/* 
+/*
  * Atomic operations based on cheater definitions and gcc language extensions.
  * These language extensions are also supported by the clang compiler.
- * Note that these operations are supported under SC, TSO and PSO in Nidhugg, 
+ * Note that these operations are supported under SC, TSO and PSO in Nidhugg,
  * but only for the model __ATOMIC_SEQ_CST, even if otherwise specified.
  */
 #define atomic_add(i, v) __atomic_add_fetch(&(v)->counter, i, __ATOMIC_RELAXED)
@@ -610,7 +646,7 @@ unsigned long volatile __jiffy_data jiffies;
 #define smp_call_function_single(cpu, fun, arg, wait) do { } while (0)
 
 /* Functions designated to run in early_initcalls must be called explicitly */
-#define early_initcall(fn) 
+#define early_initcall(fn)
 
 
 /* Declarations to emulate CPU, interrupts, and scheduling.  */
