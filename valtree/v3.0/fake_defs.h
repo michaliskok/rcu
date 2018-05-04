@@ -111,6 +111,8 @@
 
 # define smp_mb__before_atomic() barrier()
 # define smp_mb__after_atomic()  barrier()
+# define smp_mb__before_atomic_inc() barrier()
+# define smp_mb__after_atomic_inc() barrier()
 
 # define smp_mb__after_unlock_lock()     do { } while (0)
 #else /* #ifdef PSO */
