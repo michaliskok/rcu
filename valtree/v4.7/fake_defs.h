@@ -97,7 +97,7 @@
 # define wmb()  __asm__ __volatile__ ("sync" : : : "memory")
 
 # define SMPWMB      eieio
-# define LWSYNC      sync 
+# define LWSYNC      sync
 
 # define __lwsync()      __asm__ __volatile__ (stringify_in_c(LWSYNC) : : :"memory")
 # define dma_rmb()       __lwsync()
@@ -128,6 +128,40 @@ do {                                                                    \
 
 # define smp_mb__before_atomic()     smp_mb()
 # define smp_mb__after_atomic()      smp_mb()
+#elif PSO /* #ifdef POWERPC */
+# define mb()    __asm__ volatile("mfence":::"memory")
+# define rmb()   __asm__ volatile("lfence":::"memory")
+# define wmb()   __asm__ volatile("sfence" ::: "memory")
+
+# define dma_rmb()       barrier()
+# define dma_wmb()       barrier()
+
+# define smp_mb()        mb()
+# define smp_rmb()       dma_rmb()
+# define smp_wmb()       mb()
+
+# define read_barrier_depends()          do { } while (0)
+# define smp_read_barrier_depends()      do { } while (0)
+
+# define smp_store_release(p, v)			\
+	do {						\
+		barrier();				\
+		smp_mb();				\
+		ACCESS_ONCE(*p) = (v);			\
+	} while (0)
+
+# define smp_load_acquire(p)				\
+	({						\
+		__typeof__(*p) ___p1 = ACCESS_ONCE(*p);	\
+							\
+		barrier();				\
+		___p1;					\
+	})
+
+# define smp_mb__before_atomic() smp_mb()
+# define smp_mb__after_atomic()  smp_mb()
+
+# define smp_mb__after_unlock_lock()     do { } while (0)
 #else /* #ifdef POWERPC */
 # define mb()    __asm__ volatile("mfence":::"memory")
 # define rmb()   __asm__ volatile("lfence":::"memory")
@@ -295,7 +329,7 @@ void __read_once_size_nocheck(const volatile void *p, void *res, int size)
                 { .__val = (__force typeof(x)) (val) }; \
         __write_once_size(&(x), __u.__c, sizeof(x));    \
         __u.__val;                                      \
-})  
+})
 
 /* Integer division that rounds up */
 #define DIV_ROUND_UP(n,d) (((n) + (d) - 1) / (d))
@@ -349,12 +383,12 @@ typedef void (*call_rcu_func_t)(struct rcu_head *head, rcu_callback_t func);
 struct list_head {
 	struct list_head *next, *prev;
 };
- 
+
 #define LIST_HEAD_INIT(name) { &(name), &(name) }
- 
+
 #define LIST_HEAD(name)					\
 	struct list_head name = LIST_HEAD_INIT(name)
- 
+
 static inline void INIT_LIST_HEAD(struct list_head *list)
 {
 	list->next = list;
@@ -501,10 +535,10 @@ static inline void list_add(struct list_head *new, struct list_head *head)
 /* Stub some compiler directives */
 #define ____cacheline_internodealigned_in_smp
 #define __percpu
-#define __rcu 
+#define __rcu
 #define __init
 #define __initdata
-#define __jiffy_data 
+#define __jiffy_data
 #define __read_mostly
 #define __noreturn
 #define __private
@@ -619,7 +653,7 @@ int cpumask_weight(cpumask_var_t mask)
 	int set_bits, offset;
 
 	for (set_bits = 0, offset = 1; \
-	     offset <= mask; offset <<= 1) 
+	     offset <= mask; offset <<= 1)
 		if (offset & mask)
 			set_bits++;
 	return set_bits;
@@ -669,7 +703,7 @@ struct cpu_stop_work {
 };
 
 /* Do not keep track of the process' state */
-#define set_current_state(STATE) 
+#define set_current_state(STATE)
 #define __set_current_state(STATE)
 
 /* Nidhugg will take care of the scheduling for us */
@@ -678,7 +712,7 @@ struct cpu_stop_work {
 #define schedule_timeout_interruptible(t) do { } while (0)
 #define schedule_timeout_uninterruptible(t) do { } while (0)
 
-/* is_idle_task should NOT be a statically defined macro. 
+/* is_idle_task should NOT be a statically defined macro.
  * However, due to the fact that we are verifying only a portion of Tree RCU's
  * source code, we CAN set it equal to 1. That way, no warning is triggered
  * and there should not be any behavioural change for RCU.
@@ -746,10 +780,10 @@ int noassert;
 #define panic(msg) { perror(msg); assert(0); }
 #define IS_ERR(x) 0
 
-/* 
+/*
  * Atomic operations based on cheater definitions and gcc language extensions.
  * These language extensions are also supported by the clang compiler.
- * Note that these operations are supported under SC, TSO and PSO in Nidhugg, 
+ * Note that these operations are supported under SC, TSO and PSO in Nidhugg,
  * but only for the model __ATOMIC_SEQ_CST, even if otherwise specified.
  */
 #define atomic_add(i, v) __atomic_add_fetch(&(v)->counter, i, __ATOMIC_RELAXED)
@@ -817,7 +851,7 @@ typedef void (*smp_call_func_t)(void *info);
 #define smp_call_function_single(cpu, fun, arg, wait) 0
 
 /* Functions designated to run in early_initcalls must be called explicitly */
-#define early_initcall(fn) 
+#define early_initcall(fn)
 
 
 /* Declarations to emulate CPU, interrupts, and scheduling.  */
@@ -826,7 +860,7 @@ void __VERIFIER_assume(int);
 int get_cpu(void);
 void set_cpu(int);
 
-int cond_resched(void);	
+int cond_resched(void);
 void fake_acquire_cpu(int);
 void fake_release_cpu(int);
 #define might_sleep() do { } while (0)
@@ -846,35 +880,35 @@ void *run_nocb_kthread(void *);
 
 struct task_struct *spawn_gp_kthread(int (*threadfn)(void *data), void *data,
 				   const char namefmt[], const char name[])
-{							   	        
-	pthread_t t;							
-        struct task_struct *task = NULL;				
+{
+	pthread_t t;
+        struct task_struct *task = NULL;
 
-        if (!strcmp(name, "rcu_sched") || IS_ENABLED(ENABLE_RCU_BH)) {  
-		if (pthread_create(&t, NULL, run_gp_kthread, data)) 
-			abort();					
-		task = malloc(sizeof(*task));			
-		task->pid = (unsigned long) t;			
+        if (!strcmp(name, "rcu_sched") || IS_ENABLED(ENABLE_RCU_BH)) {
+		if (pthread_create(&t, NULL, run_gp_kthread, data))
+			abort();
+		task = malloc(sizeof(*task));
+		task->pid = (unsigned long) t;
 		task->tid = t;
 		return task;
-	}								
+	}
 	return NULL;
 }
 
 struct task_struct *spawn_nocb_kthread(int (*threadfn)(void *data), void *data,
 				       const char namefmt[], char abbr, int cpu)
 {
-	pthread_t t;							
-        struct task_struct *task = NULL;				
-									
-        if (abbr == 's' || IS_ENABLED(ENABLE_RCU_BH)) {  
-		if (pthread_create(&t, NULL, run_nocb_kthread, data)) 
-			abort();					
-		task = malloc(sizeof(*task));			
-		task->pid = (unsigned long) t;			
+	pthread_t t;
+        struct task_struct *task = NULL;
+
+        if (abbr == 's' || IS_ENABLED(ENABLE_RCU_BH)) {
+		if (pthread_create(&t, NULL, run_nocb_kthread, data))
+			abort();
+		task = malloc(sizeof(*task));
+		task->pid = (unsigned long) t;
 		task->tid = t;
 		return task;
-	}								
+	}
 	return NULL;
 }
 
