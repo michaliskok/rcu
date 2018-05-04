@@ -6,7 +6,9 @@ of the Linux kernel's Read-Copy-Update (RCU) mechanism.
 
 You can find some more information about our attempt to verify
 the _grace period guarantee_ of Hierarchical RCU (Tree RCU) in this
-[still unpublished paper](rcupaper.pdf) (latest revision: 2016/11/30).
+[draft](rcupaper.pdf) (latest revision: 2016/11/30), or this
+[paper](https://people.mpi-sws.org/~michalis/papers/spin2017-rcu.pdf)
+(presented at SPIN 2017).
 
 Author: Michalis Kokologiannakis.
 
@@ -28,7 +30,7 @@ In order to run the tests in this repository you need the stateless model checki
 tool [Nidhugg](https://github.com/nidhugg/nidhugg).
 
 More information about this tool can be found at
-[this paper](https://arxiv.org/abs/1501.02069).
+this [paper](https://arxiv.org/abs/1501.02069).
 
 <a name="directories">Directories</a>
 -------------------------------------
